@@ -1,0 +1,163 @@
+<div class="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+
+  {{!-- Fixed Window --}}
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col">
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold text-white mb-1">Fixed Window Counter</h2>
+      <p class="text-gray-400 text-sm">Counts requests in fixed time windows using <code class="text-emerald-400 bg-gray-800 px-1 rounded">INCR</code> + <code class="text-emerald-400 bg-gray-800 px-1 rounded">EXPIRE</code>. Simple but susceptible to boundary bursts.</p>
+      <div class="mt-2 flex gap-2 flex-wrap">
+        <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">10 requests</span>
+        <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">10s window</span>
+        <span class="text-xs bg-gray-800 text-blue-400 px-2 py-1 rounded">STRING</span>
+      </div>
+    </div>
+    <div class="flex gap-2 mb-4">
+      <button
+        hx-post="/api/rate-limit/fixed-window"
+        hx-target="#fixed-window-result"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer"
+      >
+        Send Request
+      </button>
+      <button
+        hx-post="/api/rate-limit/fixed-window/burst"
+        hx-target="#fixed-window-result"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors cursor-pointer"
+      >
+        Burst 10
+      </button>
+    </div>
+    <div id="fixed-window-result" class="flex-1 min-h-[60px]"></div>
+  </div>
+
+  {{!-- Sliding Window Log --}}
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col">
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold text-white mb-1">Sliding Window Log</h2>
+      <p class="text-gray-400 text-sm">Logs each request timestamp in a <code class="text-emerald-400 bg-gray-800 px-1 rounded">ZSET</code>. Precise sliding window, but stores every request.</p>
+      <div class="mt-2 flex gap-2 flex-wrap">
+        <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">10 requests</span>
+        <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">10s window</span>
+        <span class="text-xs bg-gray-800 text-blue-400 px-2 py-1 rounded">SORTED SET</span>
+      </div>
+    </div>
+    <div class="flex gap-2 mb-4">
+      <button
+        hx-post="/api/rate-limit/sliding-window-log"
+        hx-target="#sliding-window-log-result"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer"
+      >
+        Send Request
+      </button>
+      <button
+        hx-post="/api/rate-limit/sliding-window-log/burst"
+        hx-target="#sliding-window-log-result"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors cursor-pointer"
+      >
+        Burst 10
+      </button>
+    </div>
+    <div id="sliding-window-log-result" class="flex-1 min-h-[60px]"></div>
+  </div>
+
+  {{!-- Sliding Window Counter --}}
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col">
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold text-white mb-1">Sliding Window Counter</h2>
+      <p class="text-gray-400 text-sm">Weighted average of current and previous window counts. Smooths the fixed-window boundary problem with minimal memory.</p>
+      <div class="mt-2 flex gap-2 flex-wrap">
+        <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">10 requests</span>
+        <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">10s window</span>
+        <span class="text-xs bg-gray-800 text-blue-400 px-2 py-1 rounded">STRING x2</span>
+      </div>
+    </div>
+    <div class="flex gap-2 mb-4">
+      <button
+        hx-post="/api/rate-limit/sliding-window-counter"
+        hx-target="#sliding-window-counter-result"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer"
+      >
+        Send Request
+      </button>
+      <button
+        hx-post="/api/rate-limit/sliding-window-counter/burst"
+        hx-target="#sliding-window-counter-result"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors cursor-pointer"
+      >
+        Burst 10
+      </button>
+    </div>
+    <div id="sliding-window-counter-result" class="flex-1 min-h-[60px]"></div>
+  </div>
+
+  {{!-- Token Bucket --}}
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col">
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold text-white mb-1">Token Bucket</h2>
+      <p class="text-gray-400 text-sm">Tokens refill at a steady rate; each request consumes one. Allows short bursts up to bucket capacity. Uses a <code class="text-emerald-400 bg-gray-800 px-1 rounded">HASH</code> + Lua script.</p>
+      <div class="mt-2 flex gap-2 flex-wrap">
+        <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">10 tokens max</span>
+        <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">1 token/s refill</span>
+        <span class="text-xs bg-gray-800 text-blue-400 px-2 py-1 rounded">HASH + Lua</span>
+      </div>
+    </div>
+    <div class="flex gap-2 mb-4">
+      <button
+        hx-post="/api/rate-limit/token-bucket"
+        hx-target="#token-bucket-result"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer"
+      >
+        Send Request
+      </button>
+      <button
+        hx-post="/api/rate-limit/token-bucket/burst"
+        hx-target="#token-bucket-result"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors cursor-pointer"
+      >
+        Burst 10
+      </button>
+    </div>
+    <div id="token-bucket-result" class="flex-1 min-h-[60px]"></div>
+  </div>
+
+  {{!-- Leaky Bucket --}}
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col">
+    <div class="mb-4">
+      <h2 class="text-xl font-semibold text-white mb-1">Leaky Bucket</h2>
+      <p class="text-gray-400 text-sm">Requests fill a bucket that leaks at a constant rate. Smooths traffic to a steady output. Uses a <code class="text-emerald-400 bg-gray-800 px-1 rounded">HASH</code> + Lua script.</p>
+      <div class="mt-2 flex gap-2 flex-wrap">
+        <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">10 capacity</span>
+        <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">1 req/s drain</span>
+        <span class="text-xs bg-gray-800 text-blue-400 px-2 py-1 rounded">HASH + Lua</span>
+      </div>
+    </div>
+    <div class="flex gap-2 mb-4">
+      <button
+        hx-post="/api/rate-limit/leaky-bucket"
+        hx-target="#leaky-bucket-result"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer"
+      >
+        Send Request
+      </button>
+      <button
+        hx-post="/api/rate-limit/leaky-bucket/burst"
+        hx-target="#leaky-bucket-result"
+        hx-swap="innerHTML"
+        class="px-4 py-2 text-sm font-medium rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors cursor-pointer"
+      >
+        Burst 10
+      </button>
+    </div>
+    <div id="leaky-bucket-result" class="flex-1 min-h-[60px]"></div>
+  </div>
+
+</div>

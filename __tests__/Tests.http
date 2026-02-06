@@ -1,0 +1,37 @@
+@Host = http://localhost:8080
+
+### Home page
+GET {{Host}}/ HTTP/1.1
+
+### Fixed Window - Single request
+POST {{Host}}/api/rate-limit/fixed-window HTTP/1.1
+
+### Fixed Window - Burst 10
+POST {{Host}}/api/rate-limit/fixed-window/burst HTTP/1.1
+
+### Sliding Window Log - Single request
+POST {{Host}}/api/rate-limit/sliding-window-log HTTP/1.1
+
+### Sliding Window Log - Burst 10
+POST {{Host}}/api/rate-limit/sliding-window-log/burst HTTP/1.1
+
+### Sliding Window Counter - Single request
+POST {{Host}}/api/rate-limit/sliding-window-counter HTTP/1.1
+
+### Sliding Window Counter - Burst 10
+POST {{Host}}/api/rate-limit/sliding-window-counter/burst HTTP/1.1
+
+### Token Bucket - Single request
+POST {{Host}}/api/rate-limit/token-bucket HTTP/1.1
+
+### Token Bucket - Burst 10
+POST {{Host}}/api/rate-limit/token-bucket/burst HTTP/1.1
+
+### Leaky Bucket - Single request
+POST {{Host}}/api/rate-limit/leaky-bucket HTTP/1.1
+
+### Leaky Bucket - Burst 10
+POST {{Host}}/api/rate-limit/leaky-bucket/burst HTTP/1.1
+
+### Reset all counters
+POST {{Host}}/api/rate-limit/reset HTTP/1.1

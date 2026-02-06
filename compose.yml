@@ -1,0 +1,35 @@
+name: "redis-ratelimiting-js"
+services:
+  redis:
+    container_name: redis
+    image: "redis:alpine"
+    ports:
+      - 6379:6379
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - redis-data:/data
+
+  server:
+    container_name: server
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+      target: dev
+    command: bun dev
+    ports:
+      - 8080:8080
+    env_file:
+      - ./.env
+      - ./.env.docker
+    volumes:
+      - ./server:/usr/src/app/server
+      - /usr/src/app/node_modules
+    restart: unless-stopped
+    depends_on:
+      - redis
+
+volumes:
+  redis-data:

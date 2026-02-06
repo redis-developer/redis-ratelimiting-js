@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redis Rate Limiting Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    };
+  </script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <style>
+    .htmx-request .htmx-indicator { display: inline-block; }
+    .htmx-indicator { display: none; }
+    @keyframes pulse-border {
+      0%, 100% { border-color: rgba(239, 68, 68, 0.3); }
+      50% { border-color: rgba(239, 68, 68, 0.8); }
+    }
+    .denied-pulse { animation: pulse-border 1s ease-in-out 3; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <header class="mb-10 text-center">
+      <h1 class="text-4xl font-bold text-white mb-2">Redis Rate Limiting</h1>
+      <p class="text-gray-400 text-lg">Five algorithms, one Redis instance. Click the buttons to see each in action.</p>
+      <div class="mt-4">
+        <button
+          hx-post="/api/rate-limit/reset"
+          hx-swap="none"
+          hx-on::after-request="document.querySelectorAll('[id$=-result]').forEach(el => el.innerHTML = '')"
+          class="px-4 py-2 text-sm rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors cursor-pointer"
+        >
+          Reset All Counters
+        </button>
+      </div>
+    </header>
+
+    {{{body}}}
+  </div>
+</body>
+</html>
