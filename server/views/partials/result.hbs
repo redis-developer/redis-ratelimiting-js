@@ -2,26 +2,26 @@
 <div class="mb-2 last:mb-0">
   <div class="flex items-center justify-between mb-1">
     {{#if allowed}}
-      <span class="inline-flex items-center gap-1 text-sm font-medium text-emerald-400">
+      <span class="inline-flex items-center gap-1 text-sm font-medium text-volt">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
         Allowed
       </span>
     {{else}}
-      <span class="inline-flex items-center gap-1 text-sm font-medium text-red-400">
+      <span class="inline-flex items-center gap-1 text-sm font-medium text-redis-red">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         Denied
       </span>
     {{/if}}
-    <span class="text-xs text-gray-500">{{remaining}} / {{limit}} remaining</span>
+    <span class="text-xs text-dusk-50 font-mono">{{remaining}} / {{limit}} remaining</span>
   </div>
-  <div class="w-full bg-gray-800 rounded-full h-2">
+  <div class="w-full bg-dusk rounded-full h-2">
     <div
-      class="h-2 rounded-full transition-all duration-300 {{#if (gt percent 50)}}bg-emerald-500{{else if (gt percent 20)}}bg-yellow-500{{else}}bg-red-500{{/if}}"
+      class="h-2 rounded-full transition-all duration-300 {{#if (gt percent 50)}}bg-volt{{else if (gt percent 20)}}bg-violet{{else}}bg-redis-red{{/if}}"
       style="width: {{percent}}%"
     ></div>
   </div>
   {{#if retryAfter}}
-    <p class="text-xs text-gray-500 mt-1">Retry after {{retryAfter}}s</p>
+    <p class="text-xs text-dusk-50 mt-1">Retry after {{retryAfter}}s</p>
   {{/if}}
 </div>
 {{/each}}

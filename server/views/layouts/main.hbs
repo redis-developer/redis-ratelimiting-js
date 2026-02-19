@@ -1,37 +1,102 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Redis Rate Limiting Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'redis-red': '#FF4438',
+            'hyper': {
+              '04': '#FD736A',
+              '05': '#FF4438',
+              '06': '#EB352A',
+              '07': '#E4291E',
+              '08': '#D1281E',
+              '09': '#8A221C',
+              '10': '#351D22',
+            },
+            'midnight': '#091A23',
+            'dusk': {
+              DEFAULT: '#163341',
+              '01': '#F3F3F3',
+              '09': '#0D212C',
+              '90': '#2D4754',
+              '70': '#5C707A',
+              '50': '#8A99A0',
+              '30': '#B9C2C6',
+              '10': '#D9D9D9',
+            },
+            'volt': {
+              DEFAULT: '#DCFF1E',
+              '06': '#D0F41D',
+              '07': '#BFE112',
+              '08': '#A9CA03',
+              '09': '#8CAA00',
+              '11': '#4E5F02',
+              '50': '#F1FFA5',
+              '10': '#FBFFE8',
+            },
+            'sky-blue': {
+              DEFAULT: '#80DBFF',
+              '50': '#BFEDFF',
+              '10': '#F2FBFF',
+              '09': '#0477A5',
+            },
+            'violet': {
+              DEFAULT: '#C795E3',
+              '90': '#5925E8',
+              '50': '#E3CAF1',
+              '10': '#F9F4FC',
+              '09': '#592479',
+            },
+            'purple': {
+              '05': '#B76BE2',
+              '07': '#8F2EC4',
+            },
+          },
+          fontFamily: {
+            primary: ['Space Grotesk', 'sans-serif'],
+            secondary: ['Space Mono', 'monospace'],
+            mono: ['Space Mono', 'monospace'],
+          },
+          maxWidth: {
+            container: '1390px',
+          },
+        },
+      },
     };
   </script>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <style>
+    body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
     .htmx-request .htmx-indicator { display: inline-block; }
     .htmx-indicator { display: none; }
     @keyframes pulse-border {
-      0%, 100% { border-color: rgba(239, 68, 68, 0.3); }
-      50% { border-color: rgba(239, 68, 68, 0.8); }
+      0%, 100% { border-color: rgba(255, 68, 56, 0.3); }
+      50% { border-color: rgba(255, 68, 56, 0.8); }
     }
     .denied-pulse { animation: pulse-border 1s ease-in-out 3; }
   </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen">
-  <div class="max-w-6xl mx-auto px-4 py-8">
+<body class="bg-midnight text-dusk-10 min-h-screen font-primary">
+  <div class="max-w-container mx-auto px-6 py-8">
     <header class="mb-10 text-center">
       <h1 class="text-4xl font-bold text-white mb-2">Redis Rate Limiting</h1>
-      <p class="text-gray-400 text-lg">Five algorithms, one Redis instance. Click the buttons to see each in action.</p>
+      <p class="text-dusk-30 text-lg">Five algorithms, one Redis instance. Click the buttons to see each in action.</p>
       <div class="mt-4">
         <button
           hx-post="/api/rate-limit/reset"
           hx-swap="none"
           hx-on::after-request="document.querySelectorAll('[id$=-result]').forEach(el => el.innerHTML = '')"
-          class="px-4 py-2 text-sm rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors cursor-pointer"
+          class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-dusk border-dusk-90 text-white hover:bg-dusk-90 hover:border-dusk-70 transition-colors cursor-pointer"
         >
           Reset All Counters
         </button>
