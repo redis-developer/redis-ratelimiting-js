@@ -308,6 +308,12 @@
   };
 
   // ========== Sliding Window Counter ==========
+  //
+  // Visualisation: a fixed "sliding window" outline stays in place.
+  // Behind it, two fixed-width windows (previous + current) scroll
+  // right-to-left.  Each window shows request dots on a centre line,
+  // just like the sliding-window-log renderer.
+  //
   renderers["sliding-window-counter"] = {
     create(container, config) {
       const max = config.maxRequests || 10;
@@ -319,181 +325,113 @@
       });
       container.appendChild(statusLine);
 
-      // Timeline: two fixed windows side-by-side with a sliding overlay
-      const timelineWrap = h("div", "relative mx-auto", {
-        style: { width: "92%", height: "110px", marginBottom: "20px" },
-      });
-
-      // Previous window region (left half)
-      const prevRegion = h(
-        "div",
-        "absolute top-0 bottom-0 rounded-l-lg overflow-hidden",
-        {
-          style: {
-            left: "0",
-            width: "50%",
-            border: `1px solid ${C.violet}40`,
-            background: `${C.violet}06`,
-          },
-        },
-      );
-      const prevFill = h("div", "absolute bottom-0 left-0 right-0", {
+      // ---- Fixed frame (the "sliding window" outline) ----
+      const frame = h("div", "relative mx-auto", {
         style: {
-          height: "0%",
-          background: `${C.violet}30`,
-          transition: "height 0.3s ease, opacity 0.3s",
+          width: "92%",
+          height: "90px",
+          border: `1px solid ${C.skyBlue}50`,
+          borderRadius: "8px",
+          background: `${C.skyBlue}08`,
+          overflow: "hidden",
         },
       });
-      prevRegion.appendChild(prevFill);
-      const prevLabel = h(
-        "div",
-        "absolute top-2 left-0 right-0 text-center font-mono",
-        { style: { fontSize: "10px", color: `${C.violet}90` }, text: "prev: 0" },
-      );
-      prevRegion.appendChild(prevLabel);
-      timelineWrap.appendChild(prevRegion);
 
-      // Current window region (right half)
-      const currRegion = h(
-        "div",
-        "absolute top-0 bottom-0 rounded-r-lg overflow-hidden",
-        {
-          style: {
-            right: "0",
-            width: "50%",
-            border: `1px solid ${C.volt}40`,
-            borderLeft: "none",
-            background: `${C.volt}06`,
-          },
-        },
-      );
-      const currFill = h("div", "absolute bottom-0 left-0 right-0", {
+      // ---- Scrolling track (holds prev + curr, 200 % of frame) ----
+      const track = h("div", "absolute top-0 bottom-0", {
         style: {
-          height: "0%",
-          background: `${C.volt}30`,
-          transition: "height 0.3s ease",
+          width: "200%",
+          left: "0",
+          transform: "translateX(0%)",
+          transition: "transform 0.15s linear",
         },
       });
-      currRegion.appendChild(currFill);
-      const currLabel = h(
-        "div",
-        "absolute top-2 left-0 right-0 text-center font-mono",
-        { style: { fontSize: "10px", color: `${C.volt}90` }, text: "curr: 0" },
-      );
-      currRegion.appendChild(currLabel);
-      timelineWrap.appendChild(currRegion);
 
-      // Center boundary marker
+      // Helper: build one fixed-window region (50 % of track = 100 % of frame)
+      function makeWindow(label, bg, labelColor) {
+        const win = h("div", "absolute top-0 bottom-0", {
+          style: { width: "50%", background: bg },
+        });
+        const lbl = h(
+          "div",
+          "absolute top-2 left-0 right-0 text-center font-mono",
+          { style: { fontSize: "10px", color: labelColor }, text: label },
+        );
+        win.appendChild(lbl);
+        const line = h("div", "absolute left-3 right-3", {
+          style: {
+            top: "50%",
+            height: "2px",
+            background: C.border,
+            transform: "translateY(-50%)",
+          },
+        });
+        win.appendChild(line);
+        const dots = h("div", "absolute inset-0", {
+          style: { pointerEvents: "none" },
+        });
+        win.appendChild(dots);
+        return { win, lbl, dots };
+      }
+
+      const prev = makeWindow(
+        "Previous Window",
+        `${C.violet}0a`,
+        `${C.violet}90`,
+      );
+      prev.win.style.left = "0";
+      track.appendChild(prev.win);
+
+      const curr = makeWindow(
+        "Current Window",
+        `${C.volt}08`,
+        `${C.volt}90`,
+      );
+      curr.win.style.left = "50%";
+      track.appendChild(curr.win);
+
+      // Dashed boundary between the two windows
       const boundary = h("div", "absolute top-0 bottom-0", {
         style: {
           left: "50%",
-          width: "1px",
-          background: `${C.textDim}50`,
-          zIndex: "1",
+          width: "0px",
+          borderLeft: `1px dashed ${C.textDim}60`,
         },
       });
-      timelineWrap.appendChild(boundary);
+      track.appendChild(boundary);
 
-      // Sliding window overlay
-      const slider = h("div", "absolute top-0 bottom-0", {
-        style: {
-          width: "50%",
-          left: "0%",
-          border: `2px solid ${C.skyBlue}`,
-          borderRadius: "6px",
-          background: `${C.skyBlue}10`,
-          transition: "left 0.15s linear",
-          zIndex: "2",
-          pointerEvents: "none",
-        },
-      });
-      // "now" marker at right edge of slider
-      const nowMarker = h("div", "absolute top-0 bottom-0", {
-        style: {
-          right: "-1px",
-          width: "3px",
-          background: C.skyBlue,
-          borderRadius: "2px",
-        },
-      });
-      slider.appendChild(nowMarker);
-      const nowLabel = h("div", "absolute font-mono", {
-        style: {
-          top: "-16px",
-          right: "-12px",
-          fontSize: "9px",
-          color: C.skyBlue,
-        },
-        text: "now",
-      });
-      slider.appendChild(nowLabel);
-      timelineWrap.appendChild(slider);
+      frame.appendChild(track);
+      container.appendChild(frame);
 
-      // Window labels below timeline
-      const labelsRow = h("div", "relative mx-auto flex", {
-        style: { width: "92%", marginTop: "2px" },
-      });
-      const prevTimeLabel = h(
+      // Label under the frame
+      const windowLabel = h(
         "div",
-        "flex-1 text-center font-mono",
-        { style: { fontSize: "9px", color: C.textDim }, text: `\u2190 ${winSec}s \u2192` },
+        "text-center font-mono text-xs mt-2 mb-1",
+        {
+          style: { color: C.skyBlue },
+          text: `\u2190 ${winSec}s sliding window \u2192`,
+        },
       );
-      const currTimeLabel = h(
-        "div",
-        "flex-1 text-center font-mono",
-        { style: { fontSize: "9px", color: C.textDim }, text: `\u2190 ${winSec}s \u2192` },
-      );
-      labelsRow.appendChild(prevTimeLabel);
-      labelsRow.appendChild(currTimeLabel);
-      container.appendChild(timelineWrap);
-      container.appendChild(labelsRow);
+      container.appendChild(windowLabel);
 
       // Formula
-      const formula = h("div", "text-center font-mono text-xs mt-3 mb-2", {
+      const formula = h("div", "text-center font-mono text-xs mt-2 mb-2", {
         style: { color: C.textDim },
-        text: `0 \u00d7 1.00 + 0 = 0 effective`,
+        text: "0 \u00d7 1.00 + 0 = 0 effective",
       });
       container.appendChild(formula);
 
-      // Effective count bar
-      const effBarBg = h("div", "mx-auto rounded-full", {
-        style: {
-          width: "85%",
-          height: "6px",
-          background: C.surface,
-          marginBottom: "6px",
-        },
-      });
-      const effBarFill = h("div", "rounded-full", {
-        style: {
-          height: "6px",
-          width: "0%",
-          background: C.violet,
-          transition: "width 0.3s",
-        },
-      });
-      effBarBg.appendChild(effBarFill);
-      container.appendChild(effBarBg);
-
-      const effText = h("div", "text-center font-mono text-xs", {
-        style: { color: C.textDim },
-        text: `Effective: 0 / ${max}`,
-      });
-      container.appendChild(effText);
-
       return {
-        slider,
-        prevFill,
-        prevLabel,
-        currFill,
-        currLabel,
+        track,
+        prev,
+        curr,
         formula,
-        effBarFill,
-        effText,
         statusLine,
         local: {
           prevCount: 0,
           currCount: 0,
+          prevDots: [],
+          currDots: [],
           weight: 1,
           windowStart: Date.now(),
           windowSeconds: winSec,
@@ -504,21 +442,42 @@
     },
 
     update(els, result) {
-      if (result.allowed) els.local.currCount++;
+      const now = Date.now();
+      els.local.currCount++;
+
+      // Position dot at the current progress within the window
+      const winSec = els.local.windowSeconds;
+      const rawElapsed = (now - els.local.windowStart) / 1000;
+      const nearbyCount = els.local.currDots.filter(
+        (d) => Math.abs(now - d.ts) < 50,
+      ).length;
+      // Tiny spread so burst dots don't perfectly overlap
+      const adjusted = rawElapsed + nearbyCount * 0.018;
+      const progress = (adjusted % winSec) / winSec;
+      const xPct = 4 + progress * 92;
+
+      const lanes = [-28, -14, 0, 14, 28];
+      const yOffset = lanes[nearbyCount % lanes.length];
+
+      const dot = h("div", `absolute rounded-full dot-appear${result.allowed ? " allowed" : ""}`, {
+        style: {
+          width: `${10 + nearbyCount * 2}px`,
+          height: `${10 + nearbyCount * 2}px`,
+          left: xPct + "%",
+          top: "50%",
+          background: result.allowed ? C.volt : C.red,
+          boxShadow: `0 0 6px ${result.allowed ? C.voltDim : C.redDim}`,
+          transform: "translateY(-50%) scale(0)",
+        },
+      });
+      els.curr.dots.appendChild(dot);
+      els.local.currDots.push({ el: dot, ts: now });
+
+      // Update numbers
       const max = result.limit;
       const effective = max - result.remaining;
-
-      const currPct = Math.min(100, (els.local.currCount / max) * 100);
-      els.currFill.style.height = currPct + "%";
-      els.currLabel.textContent = `curr: ${els.local.currCount}`;
-
-      const prevPct = Math.min(100, (els.local.prevCount / max) * 100);
-      els.prevFill.style.height = prevPct + "%";
-      els.prevLabel.textContent = `prev: ${els.local.prevCount}`;
-
-      const effPct = Math.min(100, (effective / max) * 100);
-      els.effBarFill.style.width = effPct + "%";
-      els.effText.textContent = `Effective: ${effective} / ${max}`;
+      els.curr.lbl.textContent = `Current Window (${els.local.currCount})`;
+      els.prev.lbl.textContent = `Previous Window (${els.local.prevCount})`;
 
       const weighted = els.local.prevCount * els.local.weight;
       els.formula.textContent = `${els.local.prevCount} \u00d7 ${els.local.weight.toFixed(2)} + ${els.local.currCount} = ${(weighted + els.local.currCount).toFixed(1)}`;
@@ -542,38 +501,41 @@
       const currentWindowNum = Math.floor(elapsed / winSec);
       const windowProgress = (elapsed % winSec) / winSec;
 
-      // Detect fixed-window boundary crossing
+      // ---- Detect fixed-window boundary crossing ----
       if (currentWindowNum > els.local.lastWindowNum) {
+        els.local.lastWindowNum = currentWindowNum;
         els.local.prevCount = els.local.currCount;
         els.local.currCount = 0;
-        els.local.lastWindowNum = currentWindowNum;
 
-        const max = config.maxRequests || 10;
-        const prevPct = Math.min(
-          100,
-          (els.local.prevCount / max) * 100,
-        );
-        els.prevFill.style.height = prevPct + "%";
-        els.prevLabel.textContent = `prev: ${els.local.prevCount}`;
-        els.currFill.style.height = "0%";
-        els.currLabel.textContent = "curr: 0";
+        // Move current dots into the previous window container
+        els.prev.dots.innerHTML = "";
+        els.local.prevDots.forEach((d) => d.el.remove());
+        els.local.prevDots = els.local.currDots;
+        els.local.currDots = [];
+        els.local.prevDots.forEach((d) => els.prev.dots.appendChild(d.el));
+        els.curr.dots.innerHTML = "";
 
-        // Snap slider back to left instantly, then re-enable transition
-        els.slider.style.transition = "none";
-        els.slider.style.left = "0%";
+        els.prev.lbl.textContent = `Previous Window (${els.local.prevCount})`;
+        els.curr.lbl.textContent = "Current Window (0)";
+
+        // Snap track back so the (new) prev window is behind the frame
+        els.track.style.transition = "none";
+        els.track.style.transform = "translateX(0%)";
         requestAnimationFrame(() => {
-          els.slider.style.transition = "left 0.15s linear";
+          els.track.style.transition = "transform 0.15s linear";
         });
       }
 
-      // Slide the overlay: left edge moves from 0% to 50% as elapsed goes 0 to 1
-      els.slider.style.left = windowProgress * 50 + "%";
+      // ---- Scroll track: prev+curr slide left behind the fixed frame ----
+      // progress 0 → frame shows prev entirely
+      // progress 1 → frame shows curr entirely
+      els.track.style.transform = `translateX(${-windowProgress * 50}%)`;
 
-      // Update weight and fade previous window fill accordingly
+      // ---- Fade previous window dots by weight ----
       els.local.weight = +(1 - windowProgress).toFixed(3);
-      els.prevFill.style.opacity = String(0.3 + els.local.weight * 0.7);
+      els.prev.dots.style.opacity = String(0.3 + els.local.weight * 0.7);
 
-      // Keep formula and status line in sync during idle ticks
+      // ---- Keep formula / status in sync during idle ticks ----
       const weighted = els.local.prevCount * els.local.weight;
       const effective = weighted + els.local.currCount;
       const max = config.maxRequests || 10;
