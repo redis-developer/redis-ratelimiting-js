@@ -12,67 +12,141 @@ export const router = express.Router();
 
 const KEY_PREFIX = "ratelimit";
 
-const algorithms: Record<
-  string,
-  { attempt: (key: string) => Promise<RateLimitResult>; limit: number }
-> = {
+interface ConfigField {
+  name: string;
+  label: string;
+  default: number;
+  min: number;
+  max: number;
+  step: number;
+}
+
+interface AlgorithmMeta {
+  name: string;
+  slug: string;
+  description: string;
+  redisType: string;
+  commands: string;
+  shortDesc: string;
+  configFields: ConfigField[];
+}
+
+const algorithmMeta: Record<string, AlgorithmMeta> = {
   "fixed-window": {
-    attempt: (key) => fixedWindow.attempt(key),
-    limit: fixedWindow.DEFAULT_CONFIG.maxRequests,
+    name: "Fixed Window Counter",
+    slug: "fixed-window",
+    description:
+      "Counts requests in fixed time windows using INCR + EXPIRE. Simple but susceptible to boundary bursts.",
+    redisType: "STRING",
+    commands: "INCR, EXPIRE, TTL",
+    shortDesc: "Fixed time intervals",
+    configFields: [
+      { name: "maxRequests", label: "Max Requests", default: 10, min: 1, max: 50, step: 1 },
+      { name: "windowSeconds", label: "Window (seconds)", default: 10, min: 1, max: 60, step: 1 },
+    ],
   },
   "sliding-window-log": {
-    attempt: (key) => slidingWindowLog.attempt(key),
-    limit: slidingWindowLog.DEFAULT_CONFIG.maxRequests,
+    name: "Sliding Window Log",
+    slug: "sliding-window-log",
+    description:
+      "Logs each request timestamp in a ZSET. Precise sliding window, but stores every request.",
+    redisType: "SORTED SET",
+    commands: "ZADD, ZREMRANGEBYSCORE, ZCARD",
+    shortDesc: "Exact timestamp tracking",
+    configFields: [
+      { name: "maxRequests", label: "Max Requests", default: 10, min: 1, max: 50, step: 1 },
+      { name: "windowSeconds", label: "Window (seconds)", default: 10, min: 1, max: 60, step: 1 },
+    ],
   },
   "sliding-window-counter": {
-    attempt: (key) => slidingWindowCounter.attempt(key),
-    limit: slidingWindowCounter.DEFAULT_CONFIG.maxRequests,
+    name: "Sliding Window Counter",
+    slug: "sliding-window-counter",
+    description:
+      "Weighted average of current and previous window counts. Smooths the fixed-window boundary problem with minimal memory.",
+    redisType: "STRING x2",
+    commands: "INCR, EXPIRE, GET",
+    shortDesc: "Weighted window blending",
+    configFields: [
+      { name: "maxRequests", label: "Max Requests", default: 10, min: 1, max: 50, step: 1 },
+      { name: "windowSeconds", label: "Window (seconds)", default: 10, min: 1, max: 60, step: 1 },
+    ],
   },
   "token-bucket": {
-    attempt: (key) => tokenBucket.attempt(key),
-    limit: tokenBucket.DEFAULT_CONFIG.maxTokens,
+    name: "Token Bucket",
+    slug: "token-bucket",
+    description:
+      "Tokens refill at a steady rate; each request consumes one. Allows short bursts up to bucket capacity. Uses a HASH + Lua script.",
+    redisType: "HASH + Lua",
+    commands: "EVAL, HSET, HGETALL",
+    shortDesc: "Steady refill, burst-friendly",
+    configFields: [
+      { name: "maxTokens", label: "Max Tokens", default: 10, min: 1, max: 50, step: 1 },
+      { name: "refillRate", label: "Refill Rate (tok/s)", default: 1, min: 0.1, max: 10, step: 0.1 },
+    ],
   },
   "leaky-bucket": {
-    attempt: (key) => leakyBucket.attempt(key),
-    limit: leakyBucket.DEFAULT_CONFIG.capacity,
+    name: "Leaky Bucket",
+    slug: "leaky-bucket",
+    description:
+      "Requests fill a bucket that leaks at a constant rate. Smooths traffic to a steady output. Uses a HASH + Lua script.",
+    redisType: "HASH + Lua",
+    commands: "EVAL, HSET, HGETALL",
+    shortDesc: "Constant drain rate",
+    configFields: [
+      { name: "capacity", label: "Capacity", default: 10, min: 1, max: 50, step: 1 },
+      { name: "leakRate", label: "Leak Rate (req/s)", default: 1, min: 0.1, max: 10, step: 0.1 },
+    ],
   },
 };
 
-function buildResultHtml(results: RateLimitResult[]): string {
-  const items = results
-    .map((r) => {
-      const percent = Math.round((r.remaining / r.limit) * 100);
-      let barColor = "bg-emerald-500";
-      if (percent <= 20) barColor = "bg-red-500";
-      else if (percent <= 50) barColor = "bg-yellow-500";
+const algorithms: Record<
+  string,
+  {
+    attempt: (key: string, config?: any) => Promise<RateLimitResult>;
+    defaultConfig: Record<string, any>;
+  }
+> = {
+  "fixed-window": {
+    attempt: (key, config) => fixedWindow.attempt(key, config),
+    defaultConfig: { ...fixedWindow.DEFAULT_CONFIG },
+  },
+  "sliding-window-log": {
+    attempt: (key, config) => slidingWindowLog.attempt(key, config),
+    defaultConfig: { ...slidingWindowLog.DEFAULT_CONFIG },
+  },
+  "sliding-window-counter": {
+    attempt: (key, config) => slidingWindowCounter.attempt(key, config),
+    defaultConfig: { ...slidingWindowCounter.DEFAULT_CONFIG },
+  },
+  "token-bucket": {
+    attempt: (key, config) => tokenBucket.attempt(key, config),
+    defaultConfig: { ...tokenBucket.DEFAULT_CONFIG },
+  },
+  "leaky-bucket": {
+    attempt: (key, config) => leakyBucket.attempt(key, config),
+    defaultConfig: { ...leakyBucket.DEFAULT_CONFIG },
+  },
+};
 
-      const icon = r.allowed
-        ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`
-        : `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`;
+/**
+ * GET /api/rate-limit/:algorithm/view
+ * Returns an HTML fragment for the algorithm's interactive UI (used by HTMX)
+ */
+router.get("/:algorithm/view", (req: Request, res: Response) => {
+  const { algorithm } = req.params;
+  const meta = algorithmMeta[algorithm];
 
-      const statusClass = r.allowed ? "text-emerald-400" : "text-red-400";
-      const statusText = r.allowed ? "Allowed" : "Denied";
+  if (!meta) {
+    res.status(404).send(`<p class="text-red-400 text-sm">Unknown algorithm: ${algorithm}</p>`);
+    return;
+  }
 
-      const retryHtml =
-        r.retryAfter !== null
-          ? `<p class="text-xs text-gray-500 mt-1">Retry after ${r.retryAfter}s</p>`
-          : "";
+  const configJson = JSON.stringify(
+    Object.fromEntries(meta.configFields.map((f) => [f.name, f.default])),
+  );
 
-      return `<div class="mb-2 last:mb-0">
-  <div class="flex items-center justify-between mb-1">
-    <span class="inline-flex items-center gap-1 text-sm font-medium ${statusClass}">${icon} ${statusText}</span>
-    <span class="text-xs text-gray-500">${r.remaining} / ${r.limit} remaining</span>
-  </div>
-  <div class="w-full bg-gray-800 rounded-full h-2">
-    <div class="h-2 rounded-full transition-all duration-300 ${barColor}" style="width: ${percent}%"></div>
-  </div>
-  ${retryHtml}
-</div>`;
-    })
-    .join("\n");
-
-  return items;
-}
+  res.render("algorithm-view", { layout: false, ...meta, configJson });
+});
 
 /**
  * POST /api/rate-limit/reset
@@ -87,62 +161,67 @@ router.post("/reset", async (_req: Request, res: Response) => {
       await redis.del(keys);
     }
 
-    res.send("");
+    res.json({ ok: true });
   } catch (err) {
     console.error(err);
-    res.status(500).send(`<p class="text-red-400 text-sm">Error: ${err}</p>`);
+    res.status(500).json({ error: String(err) });
   }
 });
 
 /**
  * POST /api/rate-limit/:algorithm
- * Single request attempt
+ * Single request attempt. Accepts optional { config } in body.
  */
 router.post("/:algorithm", async (req: Request, res: Response) => {
   const { algorithm } = req.params;
   const algo = algorithms[algorithm];
 
   if (!algo) {
-    res.status(400).send(`<p class="text-red-400 text-sm">Unknown algorithm: ${algorithm}</p>`);
+    res.status(400).json({ error: `Unknown algorithm: ${algorithm}` });
     return;
   }
 
   try {
     const key = `${KEY_PREFIX}:${algorithm}`;
-    const result = await algo.attempt(key);
-    const html = buildResultHtml([result]);
-    res.send(html);
+    const config = req.body?.config
+      ? { ...algo.defaultConfig, ...req.body.config }
+      : undefined;
+    const result = await algo.attempt(key, config);
+    res.json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).send(`<p class="text-red-400 text-sm">Error: ${err}</p>`);
+    res.status(500).json({ error: String(err) });
   }
 });
 
 /**
  * POST /api/rate-limit/:algorithm/burst
- * Send 10 rapid requests and show all results
+ * Send multiple rapid requests. Accepts { config, count } in body.
  */
 router.post("/:algorithm/burst", async (req: Request, res: Response) => {
   const { algorithm } = req.params;
   const algo = algorithms[algorithm];
 
   if (!algo) {
-    res.status(400).send(`<p class="text-red-400 text-sm">Unknown algorithm: ${algorithm}</p>`);
+    res.status(400).json({ error: `Unknown algorithm: ${algorithm}` });
     return;
   }
 
   try {
     const key = `${KEY_PREFIX}:${algorithm}`;
+    const config = req.body?.config
+      ? { ...algo.defaultConfig, ...req.body.config }
+      : undefined;
+    const count = Math.min(Math.max(parseInt(req.body?.count) || 10, 1), 50);
     const results: RateLimitResult[] = [];
 
-    for (let i = 0; i < 10; i++) {
-      results.push(await algo.attempt(key));
+    for (let i = 0; i < count; i++) {
+      results.push(await algo.attempt(key, config));
     }
 
-    const html = buildResultHtml(results);
-    res.send(html);
+    res.json(results);
   } catch (err) {
     console.error(err);
-    res.status(500).send(`<p class="text-red-400 text-sm">Error: ${err}</p>`);
+    res.status(500).json({ error: String(err) });
   }
 });

@@ -9,7 +9,6 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Handlebars view engine
 app.engine(
   "hbs",
   engine({
@@ -22,7 +21,8 @@ app.engine(
 app.set("view engine", "hbs");
 app.set("views", path.join(__dirname, "views"));
 
-// Body parsing for POST/PUT/PATCH
+app.use(express.static(path.join(__dirname, "..", "public")));
+
 app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH"].includes(req.method)) {
     express.json({ limit: "10mb" })(req, res, next);
@@ -31,12 +31,10 @@ app.use((req, res, next) => {
   }
 });
 
-// Home page
 app.get("/", (_req, res) => {
   res.render("home");
 });
 
-// API routes
 app.use("/api/rate-limit", rateLimitRouter);
 
 export default app;

@@ -1,163 +1,68 @@
-<div class="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+<div class="flex flex-wrap justify-center gap-3 mb-8">
 
-  {{!-- Fixed Window --}}
-  <div class="border border-dusk rounded-[5px] p-6 flex flex-col">
-    <div class="mb-4">
-      <h2 class="text-xl font-bold text-white mb-1">Fixed Window Counter</h2>
-      <p class="text-dusk-30 text-sm">Counts requests in fixed time windows using <code class="text-redis-red bg-dusk/50 px-1 rounded font-mono">INCR</code> + <code class="text-redis-red bg-dusk/50 px-1 rounded font-mono">EXPIRE</code>. Simple but susceptible to boundary bursts.</p>
-      <div class="mt-2 flex gap-2 flex-wrap">
-        <span class="text-xs bg-dusk text-dusk-30 px-2 py-1 rounded font-primary">10 requests</span>
-        <span class="text-xs bg-dusk text-dusk-30 px-2 py-1 rounded font-primary">10s window</span>
-        <span class="text-xs bg-violet-09/20 text-violet px-2 py-1 rounded font-mono">STRING</span>
-      </div>
-    </div>
-    <div class="flex gap-2 mb-4">
-      <button
-        hx-post="/api/rate-limit/fixed-window"
-        hx-target="#fixed-window-result"
-        hx-swap="innerHTML"
-        class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-hyper-10 border-hyper-05 text-white hover:bg-hyper-09 hover:border-hyper-06 transition-colors cursor-pointer"
-      >
-        Send Request
-      </button>
-      <button
-        hx-post="/api/rate-limit/fixed-window/burst"
-        hx-target="#fixed-window-result"
-        hx-swap="innerHTML"
-        class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-dusk border-dusk-90 text-white hover:bg-dusk-90 hover:border-dusk-70 transition-colors cursor-pointer"
-      >
-        Burst 10
-      </button>
-    </div>
-    <div id="fixed-window-result" class="flex-1 min-h-[60px]"></div>
+  <div
+    data-algo-card="fixed-window"
+    hx-get="/api/rate-limit/fixed-window/view"
+    hx-target="#algorithm-content"
+    hx-swap="innerHTML"
+    class="algo-card cursor-pointer border border-dusk rounded-[5px] px-5 py-3 hover:border-dusk-70 transition-all"
+  >
+    <h3 class="font-semibold text-white text-sm">Fixed Window</h3>
+    <p class="text-dusk-50 text-xs mt-0.5">Fixed time intervals</p>
   </div>
 
-  {{!-- Sliding Window Log --}}
-  <div class="border border-dusk rounded-[5px] p-6 flex flex-col">
-    <div class="mb-4">
-      <h2 class="text-xl font-bold text-white mb-1">Sliding Window Log</h2>
-      <p class="text-dusk-30 text-sm">Logs each request timestamp in a <code class="text-redis-red bg-dusk/50 px-1 rounded font-mono">ZSET</code>. Precise sliding window, but stores every request.</p>
-      <div class="mt-2 flex gap-2 flex-wrap">
-        <span class="text-xs bg-dusk text-dusk-30 px-2 py-1 rounded font-primary">10 requests</span>
-        <span class="text-xs bg-dusk text-dusk-30 px-2 py-1 rounded font-primary">10s window</span>
-        <span class="text-xs bg-violet-09/20 text-violet px-2 py-1 rounded font-mono">SORTED SET</span>
-      </div>
-    </div>
-    <div class="flex gap-2 mb-4">
-      <button
-        hx-post="/api/rate-limit/sliding-window-log"
-        hx-target="#sliding-window-log-result"
-        hx-swap="innerHTML"
-        class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-hyper-10 border-hyper-05 text-white hover:bg-hyper-09 hover:border-hyper-06 transition-colors cursor-pointer"
-      >
-        Send Request
-      </button>
-      <button
-        hx-post="/api/rate-limit/sliding-window-log/burst"
-        hx-target="#sliding-window-log-result"
-        hx-swap="innerHTML"
-        class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-dusk border-dusk-90 text-white hover:bg-dusk-90 hover:border-dusk-70 transition-colors cursor-pointer"
-      >
-        Burst 10
-      </button>
-    </div>
-    <div id="sliding-window-log-result" class="flex-1 min-h-[60px]"></div>
+  <div
+    data-algo-card="sliding-window-log"
+    hx-get="/api/rate-limit/sliding-window-log/view"
+    hx-target="#algorithm-content"
+    hx-swap="innerHTML"
+    class="algo-card cursor-pointer border border-dusk rounded-[5px] px-5 py-3 hover:border-dusk-70 transition-all"
+  >
+    <h3 class="font-semibold text-white text-sm">Sliding Window Log</h3>
+    <p class="text-dusk-50 text-xs mt-0.5">Exact timestamp tracking</p>
   </div>
 
-  {{!-- Sliding Window Counter --}}
-  <div class="border border-dusk rounded-[5px] p-6 flex flex-col">
-    <div class="mb-4">
-      <h2 class="text-xl font-bold text-white mb-1">Sliding Window Counter</h2>
-      <p class="text-dusk-30 text-sm">Weighted average of current and previous window counts. Smooths the fixed-window boundary problem with minimal memory.</p>
-      <div class="mt-2 flex gap-2 flex-wrap">
-        <span class="text-xs bg-dusk text-dusk-30 px-2 py-1 rounded font-primary">10 requests</span>
-        <span class="text-xs bg-dusk text-dusk-30 px-2 py-1 rounded font-primary">10s window</span>
-        <span class="text-xs bg-violet-09/20 text-violet px-2 py-1 rounded font-mono">STRING x2</span>
-      </div>
-    </div>
-    <div class="flex gap-2 mb-4">
-      <button
-        hx-post="/api/rate-limit/sliding-window-counter"
-        hx-target="#sliding-window-counter-result"
-        hx-swap="innerHTML"
-        class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-hyper-10 border-hyper-05 text-white hover:bg-hyper-09 hover:border-hyper-06 transition-colors cursor-pointer"
-      >
-        Send Request
-      </button>
-      <button
-        hx-post="/api/rate-limit/sliding-window-counter/burst"
-        hx-target="#sliding-window-counter-result"
-        hx-swap="innerHTML"
-        class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-dusk border-dusk-90 text-white hover:bg-dusk-90 hover:border-dusk-70 transition-colors cursor-pointer"
-      >
-        Burst 10
-      </button>
-    </div>
-    <div id="sliding-window-counter-result" class="flex-1 min-h-[60px]"></div>
+  <div
+    data-algo-card="sliding-window-counter"
+    hx-get="/api/rate-limit/sliding-window-counter/view"
+    hx-target="#algorithm-content"
+    hx-swap="innerHTML"
+    class="algo-card cursor-pointer border border-dusk rounded-[5px] px-5 py-3 hover:border-dusk-70 transition-all"
+  >
+    <h3 class="font-semibold text-white text-sm">Sliding Window Counter</h3>
+    <p class="text-dusk-50 text-xs mt-0.5">Weighted window blending</p>
   </div>
 
-  {{!-- Token Bucket --}}
-  <div class="border border-dusk rounded-[5px] p-6 flex flex-col">
-    <div class="mb-4">
-      <h2 class="text-xl font-bold text-white mb-1">Token Bucket</h2>
-      <p class="text-dusk-30 text-sm">Tokens refill at a steady rate; each request consumes one. Allows short bursts up to bucket capacity. Uses a <code class="text-redis-red bg-dusk/50 px-1 rounded font-mono">HASH</code> + Lua script.</p>
-      <div class="mt-2 flex gap-2 flex-wrap">
-        <span class="text-xs bg-dusk text-dusk-30 px-2 py-1 rounded font-primary">10 tokens max</span>
-        <span class="text-xs bg-dusk text-dusk-30 px-2 py-1 rounded font-primary">1 token/s refill</span>
-        <span class="text-xs bg-violet-09/20 text-violet px-2 py-1 rounded font-mono">HASH + Lua</span>
-      </div>
-    </div>
-    <div class="flex gap-2 mb-4">
-      <button
-        hx-post="/api/rate-limit/token-bucket"
-        hx-target="#token-bucket-result"
-        hx-swap="innerHTML"
-        class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-hyper-10 border-hyper-05 text-white hover:bg-hyper-09 hover:border-hyper-06 transition-colors cursor-pointer"
-      >
-        Send Request
-      </button>
-      <button
-        hx-post="/api/rate-limit/token-bucket/burst"
-        hx-target="#token-bucket-result"
-        hx-swap="innerHTML"
-        class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-dusk border-dusk-90 text-white hover:bg-dusk-90 hover:border-dusk-70 transition-colors cursor-pointer"
-      >
-        Burst 10
-      </button>
-    </div>
-    <div id="token-bucket-result" class="flex-1 min-h-[60px]"></div>
+  <div
+    data-algo-card="token-bucket"
+    hx-get="/api/rate-limit/token-bucket/view"
+    hx-target="#algorithm-content"
+    hx-swap="innerHTML"
+    class="algo-card cursor-pointer border border-dusk rounded-[5px] px-5 py-3 hover:border-dusk-70 transition-all"
+  >
+    <h3 class="font-semibold text-white text-sm">Token Bucket</h3>
+    <p class="text-dusk-50 text-xs mt-0.5">Steady refill, burst-friendly</p>
   </div>
 
-  {{!-- Leaky Bucket --}}
-  <div class="border border-dusk rounded-[5px] p-6 flex flex-col">
-    <div class="mb-4">
-      <h2 class="text-xl font-bold text-white mb-1">Leaky Bucket</h2>
-      <p class="text-dusk-30 text-sm">Requests fill a bucket that leaks at a constant rate. Smooths traffic to a steady output. Uses a <code class="text-redis-red bg-dusk/50 px-1 rounded font-mono">HASH</code> + Lua script.</p>
-      <div class="mt-2 flex gap-2 flex-wrap">
-        <span class="text-xs bg-dusk text-dusk-30 px-2 py-1 rounded font-primary">10 capacity</span>
-        <span class="text-xs bg-dusk text-dusk-30 px-2 py-1 rounded font-primary">1 req/s drain</span>
-        <span class="text-xs bg-violet-09/20 text-violet px-2 py-1 rounded font-mono">HASH + Lua</span>
-      </div>
-    </div>
-    <div class="flex gap-2 mb-4">
-      <button
-        hx-post="/api/rate-limit/leaky-bucket"
-        hx-target="#leaky-bucket-result"
-        hx-swap="innerHTML"
-        class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-hyper-10 border-hyper-05 text-white hover:bg-hyper-09 hover:border-hyper-06 transition-colors cursor-pointer"
-      >
-        Send Request
-      </button>
-      <button
-        hx-post="/api/rate-limit/leaky-bucket/burst"
-        hx-target="#leaky-bucket-result"
-        hx-swap="innerHTML"
-        class="px-6 py-2.5 text-sm font-medium rounded-[5px] border bg-dusk border-dusk-90 text-white hover:bg-dusk-90 hover:border-dusk-70 transition-colors cursor-pointer"
-      >
-        Burst 10
-      </button>
-    </div>
-    <div id="leaky-bucket-result" class="flex-1 min-h-[60px]"></div>
+  <div
+    data-algo-card="leaky-bucket"
+    hx-get="/api/rate-limit/leaky-bucket/view"
+    hx-target="#algorithm-content"
+    hx-swap="innerHTML"
+    class="algo-card cursor-pointer border border-dusk rounded-[5px] px-5 py-3 hover:border-dusk-70 transition-all"
+  >
+    <h3 class="font-semibold text-white text-sm">Leaky Bucket</h3>
+    <p class="text-dusk-50 text-xs mt-0.5">Constant drain rate</p>
   </div>
 
+</div>
+
+<div id="algorithm-content" class="min-h-[400px]">
+  <div class="flex flex-col items-center justify-center py-20 text-center">
+    <svg class="w-16 h-16 text-dusk-70 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+    </svg>
+    <p class="text-dusk-50 text-lg">Select an algorithm above to explore</p>
+    <p class="text-dusk-70 text-sm mt-1">Each algorithm includes an interactive visualization and configurable parameters</p>
+  </div>
 </div>
