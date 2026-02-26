@@ -49,7 +49,8 @@ export async function attempt(
 
   let retryAfter: number | null = null;
   if (!allowed) {
-    const ttl = await redis.ttl(windowKey);
+    // Use pTTL to get milliseconds
+    const ttl = (await redis.pTTL(windowKey)) / 1000;
     retryAfter = ttl > 0 ? ttl : windowSeconds;
   }
 

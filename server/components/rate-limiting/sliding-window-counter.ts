@@ -40,6 +40,7 @@ export async function attempt(
 
   // Get previous window count
   const prevCount = parseInt((await redis.get(previousKey)) ?? "0", 10);
+
   // Weight by how much of the previous window still overlaps
   const weightedPrev = prevCount * (1 - elapsed);
 

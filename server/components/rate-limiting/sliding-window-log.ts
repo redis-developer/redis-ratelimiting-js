@@ -53,8 +53,7 @@ export async function attempt(
   const oldest = await redis.zRangeWithScores(key, 0, 0);
   let retryAfter = windowSeconds;
   if (oldest.length > 0) {
-    retryAfter = Math.ceil((oldest[0].score + windowSeconds * 1000 - now) / 1000);
-    retryAfter = Math.max(1, retryAfter);
+    retryAfter = (oldest[0].score + windowSeconds * 1000 - now) / 1000;
   }
 
   return {
