@@ -11,7 +11,7 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    <div class="lg:col-span-2 border border-dusk rounded-[5px] p-6 flex items-center justify-center" style="min-height: 280px;">
+    <div class="lg:col-span-2 border border-dusk rounded-[5px] p-6 flex items-center justify-center">
       <div id="viz-container" class="w-full"></div>
     </div>
 
@@ -72,8 +72,9 @@
 
       <div class="border border-dusk rounded-[5px] p-4">
         <h3 class="text-xs font-semibold text-dusk-50 uppercase tracking-wider mb-2">Request Log</h3>
-        <div id="result-log" class="max-h-52 overflow-y-auto"></div>
-        <p id="result-log-empty" class="text-dusk-70 text-xs">No requests yet</p>
+        <div id="result-log" class="h-28 overflow-y-auto">
+          <p id="result-log-empty" class="text-dusk-70 text-xs">No requests yet</p>
+        </div>
       </div>
 
     </div>

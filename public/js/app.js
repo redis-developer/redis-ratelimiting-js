@@ -218,7 +218,10 @@
       const windowLabel = h(
         "div",
         "text-center font-mono text-xs mt-2 mb-1",
-        { style: { color: C.textDim }, text: `\u2190 ${winSec}s window \u2192` },
+        {
+          style: { color: C.textDim },
+          text: `\u2190 ${winSec}s window \u2192`,
+        },
       );
       container.appendChild(windowLabel);
 
@@ -239,10 +242,16 @@
 
     update(els, result) {
       const now = Date.now();
-      const dot = h("div", "absolute rounded-full dot-appear", {
+
+      // Count dots that arrived at roughly the same instant (burst detection)
+      const nearbyCount = els.local.dots.filter(
+        (d) => Math.abs(now - d.ts) < 10,
+      ).length;
+
+      const dot = h("div", `absolute rounded-full dot-appear${result.allowed ? " allowed" : ""}`, {
         style: {
-          width: "10px",
-          height: "10px",
+          width: `${10 + nearbyCount * 2}px`,
+          height: `${10 + nearbyCount * 2}px`,
           top: "50%",
           right: "10px",
           background: result.allowed ? C.volt : C.red,
@@ -273,6 +282,7 @@
       const now = Date.now();
       const winMs = (config.windowSeconds || 10) * 1000;
       const tw = els.timeline.offsetWidth || 400;
+      let count = 0;
 
       els.local.dots = els.local.dots.filter((d) => {
         const age = now - d.ts;
@@ -282,10 +292,18 @@
           setTimeout(() => d.el.remove(), 400);
           return false;
         }
-        const pct = age / winMs;
+        const pct = Math.max(0, age / winMs);
         d.el.style.right = 10 + pct * (tw - 30) + "px";
+
+        if (d.el.classList.contains("allowed")) {
+          count++;
+        }
+
         return true;
       });
+
+      els.statusLine.textContent = els.statusLine.textContent.replace(/^\d+/, count);
+      els.countLine.textContent = els.countLine.textContent.replace(/^\d+/, count);
     },
   };
 
@@ -295,57 +313,155 @@
       const max = config.maxRequests || 10;
       const winSec = config.windowSeconds || 10;
 
-      const formula = h("div", "text-center mb-5 font-mono text-sm", {
+      const statusLine = h("div", "text-center mb-4 font-mono text-sm", {
         style: { color: C.textSecondary },
-        text: "prev \u00d7 weight + current = 0",
+        text: `Weight: 1.00 \u2014 Effective: 0 / ${max}`,
+      });
+      container.appendChild(statusLine);
+
+      // Timeline: two fixed windows side-by-side with a sliding overlay
+      const timelineWrap = h("div", "relative mx-auto", {
+        style: { width: "92%", height: "110px", marginBottom: "20px" },
+      });
+
+      // Previous window region (left half)
+      const prevRegion = h(
+        "div",
+        "absolute top-0 bottom-0 rounded-l-lg overflow-hidden",
+        {
+          style: {
+            left: "0",
+            width: "50%",
+            border: `1px solid ${C.violet}40`,
+            background: `${C.violet}06`,
+          },
+        },
+      );
+      const prevFill = h("div", "absolute bottom-0 left-0 right-0", {
+        style: {
+          height: "0%",
+          background: `${C.violet}30`,
+          transition: "height 0.3s ease, opacity 0.3s",
+        },
+      });
+      prevRegion.appendChild(prevFill);
+      const prevLabel = h(
+        "div",
+        "absolute top-2 left-0 right-0 text-center font-mono",
+        { style: { fontSize: "10px", color: `${C.violet}90` }, text: "prev: 0" },
+      );
+      prevRegion.appendChild(prevLabel);
+      timelineWrap.appendChild(prevRegion);
+
+      // Current window region (right half)
+      const currRegion = h(
+        "div",
+        "absolute top-0 bottom-0 rounded-r-lg overflow-hidden",
+        {
+          style: {
+            right: "0",
+            width: "50%",
+            border: `1px solid ${C.volt}40`,
+            borderLeft: "none",
+            background: `${C.volt}06`,
+          },
+        },
+      );
+      const currFill = h("div", "absolute bottom-0 left-0 right-0", {
+        style: {
+          height: "0%",
+          background: `${C.volt}30`,
+          transition: "height 0.3s ease",
+        },
+      });
+      currRegion.appendChild(currFill);
+      const currLabel = h(
+        "div",
+        "absolute top-2 left-0 right-0 text-center font-mono",
+        { style: { fontSize: "10px", color: `${C.volt}90` }, text: "curr: 0" },
+      );
+      currRegion.appendChild(currLabel);
+      timelineWrap.appendChild(currRegion);
+
+      // Center boundary marker
+      const boundary = h("div", "absolute top-0 bottom-0", {
+        style: {
+          left: "50%",
+          width: "1px",
+          background: `${C.textDim}50`,
+          zIndex: "1",
+        },
+      });
+      timelineWrap.appendChild(boundary);
+
+      // Sliding window overlay
+      const slider = h("div", "absolute top-0 bottom-0", {
+        style: {
+          width: "50%",
+          left: "0%",
+          border: `2px solid ${C.skyBlue}`,
+          borderRadius: "6px",
+          background: `${C.skyBlue}10`,
+          transition: "left 0.15s linear",
+          zIndex: "2",
+          pointerEvents: "none",
+        },
+      });
+      // "now" marker at right edge of slider
+      const nowMarker = h("div", "absolute top-0 bottom-0", {
+        style: {
+          right: "-1px",
+          width: "3px",
+          background: C.skyBlue,
+          borderRadius: "2px",
+        },
+      });
+      slider.appendChild(nowMarker);
+      const nowLabel = h("div", "absolute font-mono", {
+        style: {
+          top: "-16px",
+          right: "-12px",
+          fontSize: "9px",
+          color: C.skyBlue,
+        },
+        text: "now",
+      });
+      slider.appendChild(nowLabel);
+      timelineWrap.appendChild(slider);
+
+      // Window labels below timeline
+      const labelsRow = h("div", "relative mx-auto flex", {
+        style: { width: "92%", marginTop: "2px" },
+      });
+      const prevTimeLabel = h(
+        "div",
+        "flex-1 text-center font-mono",
+        { style: { fontSize: "9px", color: C.textDim }, text: `\u2190 ${winSec}s \u2192` },
+      );
+      const currTimeLabel = h(
+        "div",
+        "flex-1 text-center font-mono",
+        { style: { fontSize: "9px", color: C.textDim }, text: `\u2190 ${winSec}s \u2192` },
+      );
+      labelsRow.appendChild(prevTimeLabel);
+      labelsRow.appendChild(currTimeLabel);
+      container.appendChild(timelineWrap);
+      container.appendChild(labelsRow);
+
+      // Formula
+      const formula = h("div", "text-center font-mono text-xs mt-3 mb-2", {
+        style: { color: C.textDim },
+        text: `0 \u00d7 1.00 + 0 = 0 effective`,
       });
       container.appendChild(formula);
 
-      const barsRow = h("div", "flex justify-center gap-10 mb-5");
-
-      function makeBar(label, color) {
-        const wrap = h("div", "text-center");
-        const lbl = h("div", "font-mono text-xs mb-2", {
-          style: { color: C.textDim },
-          text: label,
-        });
-        wrap.appendChild(lbl);
-        const bar = h("div", "relative mx-auto rounded overflow-hidden", {
-          style: {
-            width: "90px",
-            height: "110px",
-            border: `2px solid ${C.border}`,
-          },
-        });
-        const fill = h("div", "absolute bottom-0 left-0 right-0", {
-          style: {
-            height: "0%",
-            background: color,
-            transition: "height 0.3s ease, opacity 0.3s",
-          },
-        });
-        bar.appendChild(fill);
-        wrap.appendChild(bar);
-        const count = h("div", "font-mono text-xs mt-1", {
-          style: { color: C.textDim },
-          text: "0",
-        });
-        wrap.appendChild(count);
-        return { wrap, lbl, fill, count };
-      }
-
-      const prevBar = makeBar("Previous (\u00d71.00)", C.violetDim);
-      const currBar = makeBar("Current", C.voltDim);
-      barsRow.appendChild(prevBar.wrap);
-      barsRow.appendChild(currBar.wrap);
-      container.appendChild(barsRow);
-
+      // Effective count bar
       const effBarBg = h("div", "mx-auto rounded-full", {
         style: {
           width: "85%",
           height: "6px",
           background: C.surface,
-          marginBottom: "8px",
+          marginBottom: "6px",
         },
       });
       const effBarFill = h("div", "rounded-full", {
@@ -366,11 +482,15 @@
       container.appendChild(effText);
 
       return {
+        slider,
+        prevFill,
+        prevLabel,
+        currFill,
+        currLabel,
         formula,
-        prev: prevBar,
-        curr: currBar,
         effBarFill,
         effText,
+        statusLine,
         local: {
           prevCount: 0,
           currCount: 0,
@@ -378,6 +498,7 @@
           windowStart: Date.now(),
           windowSeconds: winSec,
           maxRequests: max,
+          lastWindowNum: 0,
         },
       };
     },
@@ -388,18 +509,20 @@
       const effective = max - result.remaining;
 
       const currPct = Math.min(100, (els.local.currCount / max) * 100);
-      els.curr.fill.style.height = currPct + "%";
-      els.curr.count.textContent = String(els.local.currCount);
+      els.currFill.style.height = currPct + "%";
+      els.currLabel.textContent = `curr: ${els.local.currCount}`;
 
       const prevPct = Math.min(100, (els.local.prevCount / max) * 100);
-      els.prev.fill.style.height = prevPct + "%";
+      els.prevFill.style.height = prevPct + "%";
+      els.prevLabel.textContent = `prev: ${els.local.prevCount}`;
 
       const effPct = Math.min(100, (effective / max) * 100);
       els.effBarFill.style.width = effPct + "%";
       els.effText.textContent = `Effective: ${effective} / ${max}`;
 
       const weighted = els.local.prevCount * els.local.weight;
-      els.formula.textContent = `${els.local.prevCount} \u00d7 ${els.local.weight.toFixed(2)} + ${els.local.currCount} \u2248 ${(weighted + els.local.currCount).toFixed(1)}`;
+      els.formula.textContent = `${els.local.prevCount} \u00d7 ${els.local.weight.toFixed(2)} + ${els.local.currCount} = ${(weighted + els.local.currCount).toFixed(1)}`;
+      els.statusLine.textContent = `Weight: ${els.local.weight.toFixed(2)} \u2014 Effective: ${effective} / ${max}`;
 
       if (!result.allowed) {
         const vizBox = document.querySelector(
@@ -416,11 +539,46 @@
     tick(els, config, dt) {
       const winSec = config.windowSeconds || 10;
       const elapsed = (Date.now() - els.local.windowStart) / 1000;
+      const currentWindowNum = Math.floor(elapsed / winSec);
       const windowProgress = (elapsed % winSec) / winSec;
 
+      // Detect fixed-window boundary crossing
+      if (currentWindowNum > els.local.lastWindowNum) {
+        els.local.prevCount = els.local.currCount;
+        els.local.currCount = 0;
+        els.local.lastWindowNum = currentWindowNum;
+
+        const max = config.maxRequests || 10;
+        const prevPct = Math.min(
+          100,
+          (els.local.prevCount / max) * 100,
+        );
+        els.prevFill.style.height = prevPct + "%";
+        els.prevLabel.textContent = `prev: ${els.local.prevCount}`;
+        els.currFill.style.height = "0%";
+        els.currLabel.textContent = "curr: 0";
+
+        // Snap slider back to left instantly, then re-enable transition
+        els.slider.style.transition = "none";
+        els.slider.style.left = "0%";
+        requestAnimationFrame(() => {
+          els.slider.style.transition = "left 0.15s linear";
+        });
+      }
+
+      // Slide the overlay: left edge moves from 0% to 50% as elapsed goes 0 to 1
+      els.slider.style.left = windowProgress * 50 + "%";
+
+      // Update weight and fade previous window fill accordingly
       els.local.weight = +(1 - windowProgress).toFixed(3);
-      els.prev.lbl.textContent = `Previous (\u00d7${els.local.weight.toFixed(2)})`;
-      els.prev.fill.style.opacity = String(0.3 + els.local.weight * 0.7);
+      els.prevFill.style.opacity = String(0.3 + els.local.weight * 0.7);
+
+      // Keep formula and status line in sync during idle ticks
+      const weighted = els.local.prevCount * els.local.weight;
+      const effective = weighted + els.local.currCount;
+      const max = config.maxRequests || 10;
+      els.formula.textContent = `${els.local.prevCount} \u00d7 ${els.local.weight.toFixed(2)} + ${els.local.currCount} = ${effective.toFixed(1)}`;
+      els.statusLine.textContent = `Weight: ${els.local.weight.toFixed(2)} \u2014 Effective: ${effective.toFixed(1)} / ${max}`;
     },
   };
 
