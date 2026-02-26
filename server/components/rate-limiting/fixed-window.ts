@@ -20,9 +20,8 @@ export const DEFAULT_CONFIG: FixedWindowConfig = {
 /**
  * Fixed Window Counter rate limiter.
  *
- * Uses a single STRING key per window. The key name includes
- * the window number (timestamp / windowSeconds) so it naturally
- * rotates. INCR atomically bumps the counter, and EXPIRE ensures
+ * Uses a single STRING key per window. 
+ * INCR atomically bumps the counter, and EXPIRE ensures
  * cleanup.
  *
  * Redis commands: INCR, EXPIRE, TTL
@@ -34,14 +33,11 @@ export async function attempt(
   const redis = await getClient();
   const { maxRequests, windowSeconds } = config;
 
-  const now = Math.floor(Date.now() / 1000);
-  const windowKey = `${key}:${Math.floor(now / windowSeconds)}`;
-
-  const count = await redis.incr(windowKey);
+  const count = await redis.incr(key);
 
   // Set expiry on first request in this window
   if (count === 1) {
-    await redis.expire(windowKey, windowSeconds);
+    await redis.expire(key, windowSeconds);
   }
 
   const allowed = count <= maxRequests;
@@ -50,7 +46,7 @@ export async function attempt(
   let retryAfter: number | null = null;
   if (!allowed) {
     // Use pTTL to get milliseconds
-    const ttl = (await redis.pTTL(windowKey)) / 1000;
+    const ttl = (await redis.pTTL(key)) / 1000;
     retryAfter = ttl > 0 ? ttl : windowSeconds;
   }
 
