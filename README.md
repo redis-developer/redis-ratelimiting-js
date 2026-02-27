@@ -4,17 +4,19 @@ This is a [Redis](https://redis.io/) rate limiting demo for JS and [Node](https:
 - [Express](https://expressjs.com/)
 - [Handlebars](https://handlebarsjs.com/) + [HTMX](https://htmx.org/)
 
+> **NOTE:** Read the [tutorial on rate limiters](https://redis.io/tutorials/howtos/ratelimiting/) for a guide.
+
 ## Rate Limiting Algorithms
 
 This demo implements five rate limiting algorithms, each backed by different Redis data structures:
 
-| Algorithm | Redis Data Structure | Description |
-| --- | --- | --- |
-| **Fixed Window Counter** | `STRING` (`INCR` + `EXPIRE`) | Counts requests in fixed time windows. Simple but susceptible to boundary bursts. |
-| **Sliding Window Log** | `SORTED SET` (`ZADD` + `ZREMRANGEBYSCORE`) | Logs each request timestamp. Precise sliding window, but stores every request. |
-| **Sliding Window Counter** | `STRING` x2 (weighted) | Weighted average of current and previous window counts. Smooths the fixed-window boundary problem. |
-| **Token Bucket** | `HASH` + Lua script | Tokens refill at a steady rate; each request consumes one. Allows short bursts. |
-| **Leaky Bucket** | `HASH` + Lua script | Requests fill a bucket that leaks at a constant rate. Smooths traffic to steady output. |
+| Algorithm                  | Redis Data Structure                       | Description                                                                                                                                           |
+| -------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Fixed Window Counter**   | `STRING` (`INCR` + `EXPIRE`)               | Counts requests in fixed time windows. Simple but susceptible to boundary bursts.                                                                     |
+| **Sliding Window Log**     | `SORTED SET` (`ZADD` + `ZREMRANGEBYSCORE`) | Logs each request timestamp. Precise sliding window, but stores every request.                                                                        |
+| **Sliding Window Counter** | `STRING` x2 (weighted)                     | Weighted average of current and previous window counts. Smooths the fixed-window boundary problem.                                                    |
+| **Token Bucket**           | `HASH` + Lua script                        | Tokens refill at a steady rate; each request consumes one. Allows short bursts.                                                                       |
+| **Leaky Bucket**           | `HASH` + Lua script                        | Requests fill a bucket that leaks at a constant rate. Smooths traffic to steady output (shaping), or drops requests above the bucket size (policing). |
 
 ## Requirements
 
