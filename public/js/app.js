@@ -615,10 +615,14 @@
     create(container, config) {
       const cap = config.capacity || 10;
       const rate = config.leakRate || 1;
+      const mode = config.mode || "policing";
+      const isShaping = mode === "shaping";
 
       const statusLine = h("div", "viz-status", {
         style: { color: C.textSecondary },
-        html: `<span style="color:${C.skyBlue}">\u25bc</span> Incoming requests`,
+        html: isShaping
+          ? `<span style="color:${C.violet}">\u29D7</span> Shaping \u2014 requests queued`
+          : `<span style="color:${C.skyBlue}">\u25bc</span> Policing \u2014 excess dropped`,
       });
       container.appendChild(statusLine);
 
@@ -634,7 +638,7 @@
         },
       });
 
-      const water = h("div", "water-surface water-fill", {
+      const water = h("div", `water-surface water-fill${isShaping ? " shaping" : ""}`, {
         style: { height: "0%" },
       });
       bucket.appendChild(water);
@@ -658,7 +662,7 @@
         style: {
           width: "6px",
           height: "6px",
-          background: C.skyBlue,
+          background: isShaping ? C.violet : C.skyBlue,
           opacity: "0",
         },
       });
@@ -667,13 +671,15 @@
 
       const drainLabel = h("div", "viz-label-drain", {
         style: { color: C.textDim },
-        text: `Draining at ${rate} req/s`,
+        text: isShaping
+          ? `Processing at ${rate} req/s`
+          : `Draining at ${rate} req/s`,
       });
       container.appendChild(drainLabel);
 
       const countLine = h("div", "viz-count", {
         style: { color: C.textDim },
-        text: `Level: 0 / ${cap}`,
+        text: isShaping ? `Queue: 0 / ${cap}` : `Level: 0 / ${cap}`,
       });
       container.appendChild(countLine);
 
@@ -682,18 +688,22 @@
         dripDot,
         countLine,
         drainLabel,
-        local: { level: 0, capacity: cap, leakRate: rate },
+        statusLine,
+        local: { level: 0, capacity: cap, leakRate: rate, mode },
       };
     },
 
     update(els, result) {
       const level = result.limit - result.remaining;
       els.local.level = level;
+      const isShaping = els.local.mode === "shaping";
 
       const pct = (level / els.local.capacity) * 100;
       els.water.style.height = `${pct}%`;
 
-      if (pct > 80) {
+      if (isShaping) {
+        els.water.classList.remove("danger");
+      } else if (pct > 80) {
         els.water.classList.add("danger");
       } else {
         els.water.classList.remove("danger");
@@ -707,26 +717,40 @@
         flashVizPanel();
       }
 
-      els.countLine.textContent = `Level: ${level} / ${result.limit}`;
+      const label = isShaping ? "Queue" : "Level";
+      els.countLine.textContent = `${label}: ${level} / ${result.limit}`;
+
+      if (isShaping && result.delay != null && result.delay > 0) {
+        els.statusLine.innerHTML =
+          `<span style="color:${C.violet}">\u29D7</span> Shaping \u2014 delay: ${result.delay.toFixed(1)}s`;
+      }
     },
 
     tick(els, config, dt) {
       const rate = config.leakRate || 1;
       const cap = config.capacity || 10;
+      const isShaping = els.local.mode === "shaping";
 
       if (els.local.level > 0) {
         els.local.level = Math.max(0, els.local.level - rate * dt);
         const pct = (els.local.level / cap) * 100;
         els.water.style.height = pct + "%";
 
-        if (pct > 80) els.water.classList.add("danger");
-        else els.water.classList.remove("danger");
+        if (!isShaping) {
+          if (pct > 80) els.water.classList.add("danger");
+          else els.water.classList.remove("danger");
+        }
 
         const display = Math.ceil(els.local.level);
-        els.countLine.textContent = `Level: ${display} / ${cap}`;
+        const label = isShaping ? "Queue" : "Level";
+        els.countLine.textContent = `${label}: ${display} / ${cap}`;
 
         if (els.local.level <= 0) {
           els.dripDot.style.opacity = "0";
+          if (isShaping) {
+            els.statusLine.innerHTML =
+              `<span style="color:${C.violet}">\u29D7</span> Shaping \u2014 requests queued`;
+          }
         }
       }
     },
@@ -741,6 +765,9 @@
     form.querySelectorAll("input[name]").forEach((input) => {
       data[input.name] = parseFloat(input.value) || 0;
     });
+    form.querySelectorAll("select[name]").forEach((select) => {
+      data[select.name] = select.value;
+    });
     return data;
   }
 
@@ -751,11 +778,17 @@
     if (empty) empty.style.display = "none";
 
     results.forEach((r) => {
-      const icon = r.allowed ? "\u2713" : "\u2717";
-      const color = r.allowed ? C.volt : C.red;
-      const text = r.allowed
-        ? `Allowed \u2014 ${r.remaining}/${r.limit} remaining`
-        : `Denied \u2014 retry after ${r.retryAfter}s`;
+      const hasDelay = r.delay != null && r.delay > 0;
+      const icon = r.allowed ? (hasDelay ? "\u29D7" : "\u2713") : "\u2717";
+      const color = r.allowed ? (hasDelay ? C.violet : C.volt) : C.red;
+      let text;
+      if (!r.allowed) {
+        text = `Denied \u2014 retry after ${r.retryAfter}s`;
+      } else if (hasDelay) {
+        text = `Queued +${r.delay.toFixed(1)}s \u2014 ${r.remaining}/${r.limit} remaining`;
+      } else {
+        text = `Allowed \u2014 ${r.remaining}/${r.limit} remaining`;
+      }
 
       const entry = h("div", "log-entry", {
         style: { borderColor: C.border + "60" },
@@ -865,7 +898,7 @@
     const form = document.getElementById("config-form");
     if (form) {
       let debounce;
-      form.addEventListener("input", () => {
+      const onConfigChange = () => {
         clearTimeout(debounce);
         debounce = setTimeout(async () => {
           const newConfig = getConfig();
@@ -878,7 +911,9 @@
           const empty = document.getElementById("result-log-empty");
           if (empty) empty.style.display = "";
         }, 600);
-      });
+      };
+      form.addEventListener("input", onConfigChange);
+      form.addEventListener("change", onConfigChange);
     }
   }
 

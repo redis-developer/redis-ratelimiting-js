@@ -15,10 +15,11 @@ const KEY_PREFIX = "ratelimit";
 interface ConfigField {
   name: string;
   label: string;
-  default: number;
-  min: number;
-  max: number;
-  step: number;
+  default: number | string;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: { value: string; label: string }[];
 }
 
 interface AlgorithmMeta {
@@ -93,12 +94,21 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     name: "Leaky Bucket",
     slug: "leaky-bucket",
     description:
-      "Requests fill a bucket that leaks at a constant rate. Drops requests when the bucket is full (policing method). Uses a HASH + Lua script.",
+      "Requests fill a bucket that leaks at a constant rate. Policing drops excess requests; shaping queues them with a delay. Uses a HASH + Lua script.",
     redisType: "HASH + Lua",
     commands: "EVAL, HSET, HGETALL",
     shortDesc: "Constant drain rate",
     infoUrl: "https://redis.io/tutorials/howtos/ratelimiting/#5-leaky-bucket",
     configFields: [
+      {
+        name: "mode",
+        label: "Mode",
+        default: "policing",
+        options: [
+          { value: "policing", label: "Policing (drop)" },
+          { value: "shaping", label: "Shaping (queue)" },
+        ],
+      },
       { name: "capacity", label: "Capacity", default: 10, min: 1, max: 50, step: 1 },
       { name: "leakRate", label: "Leak Rate (req/s)", default: 1, min: 0.1, max: 10, step: 0.1 },
     ],
@@ -147,11 +157,22 @@ router.get("/:algorithm/view", (req: Request, res: Response) => {
     return;
   }
 
+  const configFields = meta.configFields.map((f) => {
+    if (!f.options) return f;
+    return {
+      ...f,
+      options: f.options.map((o) => ({
+        ...o,
+        selected: o.value === String(f.default),
+      })),
+    };
+  });
+
   const configJson = JSON.stringify(
     Object.fromEntries(meta.configFields.map((f) => [f.name, f.default])),
   );
 
-  res.render("algorithm-view", { layout: false, ...meta, configJson });
+  res.render("algorithm-view", { layout: false, ...meta, configFields, configJson });
 });
 
 /**

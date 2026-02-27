@@ -5,6 +5,7 @@ export interface RateLimitResult {
   remaining: number;
   limit: number;
   retryAfter: number | null;
+  delay?: number | null;
 }
 
 export interface FixedWindowConfig {

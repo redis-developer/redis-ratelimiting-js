@@ -28,6 +28,13 @@
           {{#each configFields}}
           <div class="config-group">
             <label class="config-label">{{this.label}}</label>
+            {{#if this.options}}
+            <select name="{{this.name}}" class="config-input">
+              {{#each this.options}}
+              <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+              {{/each}}
+            </select>
+            {{else}}
             <input
               type="number"
               name="{{this.name}}"
@@ -37,6 +44,7 @@
               step="{{this.step}}"
               class="config-input"
             />
+            {{/if}}
           </div>
           {{/each}}
         </form>
