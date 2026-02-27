@@ -240,17 +240,21 @@
         (d) => Math.abs(now - d.ts) < 10,
       ).length;
 
-      const dot = h("div", `dot dot-appear${result.allowed ? " allowed" : ""}`, {
-        style: {
-          width: `${10 + nearbyCount * 2}px`,
-          height: `${10 + nearbyCount * 2}px`,
-          top: "50%",
-          right: "10px",
-          background: result.allowed ? C.volt : C.red,
-          boxShadow: `0 0 6px ${result.allowed ? C.voltDim : C.redDim}`,
-          transform: "translateY(-50%) scale(0)",
+      const dot = h(
+        "div",
+        `dot dot-appear${result.allowed ? " allowed" : ""}`,
+        {
+          style: {
+            width: `${10 + nearbyCount * 2}px`,
+            height: `${10 + nearbyCount * 2}px`,
+            top: "50%",
+            right: "10px",
+            background: result.allowed ? C.volt : C.red,
+            boxShadow: `0 0 6px ${result.allowed ? C.voltDim : C.redDim}`,
+            transform: "translateY(-50%) scale(0)",
+          },
         },
-      });
+      );
       els.dotsWrap.appendChild(dot);
       els.local.dots.push({ ts: now, el: dot });
 
@@ -287,8 +291,14 @@
         return true;
       });
 
-      els.statusLine.textContent = els.statusLine.textContent.replace(/^\d+/, count);
-      els.countLine.textContent = els.countLine.textContent.replace(/^\d+/, count);
+      els.statusLine.textContent = els.statusLine.textContent.replace(
+        /^\d+/,
+        count,
+      );
+      els.countLine.textContent = els.countLine.textContent.replace(
+        /^\d+/,
+        count,
+      );
     },
   };
 
@@ -354,11 +364,7 @@
       prev.win.style.left = "0";
       track.appendChild(prev.win);
 
-      const curr = makeWindow(
-        "Current Window",
-        `${C.volt}08`,
-        `${C.volt}90`,
-      );
+      const curr = makeWindow("Current Window", `${C.volt}08`, `${C.volt}90`);
       curr.win.style.left = "50%";
       track.appendChild(curr.win);
 
@@ -422,17 +428,21 @@
       const lanes = [-28, -14, 0, 14, 28];
       const yOffset = lanes[nearbyCount % lanes.length];
 
-      const dot = h("div", `dot dot-appear${result.allowed ? " allowed" : ""}`, {
-        style: {
-          width: `${10 + nearbyCount * 2}px`,
-          height: `${10 + nearbyCount * 2}px`,
-          left: xPct + "%",
-          top: "50%",
-          background: result.allowed ? C.volt : C.red,
-          boxShadow: `0 0 6px ${result.allowed ? C.voltDim : C.redDim}`,
-          transform: "translateY(-50%) scale(0)",
+      const dot = h(
+        "div",
+        `dot dot-appear${result.allowed ? " allowed" : ""}`,
+        {
+          style: {
+            width: `${10 + nearbyCount * 2}px`,
+            height: `${10 + nearbyCount * 2}px`,
+            left: xPct + "%",
+            top: "50%",
+            background: result.allowed ? C.volt : C.red,
+            boxShadow: `0 0 6px ${result.allowed ? C.voltDim : C.redDim}`,
+            transform: "translateY(-50%) scale(0)",
+          },
         },
-      });
+      );
       els.curr.dots.appendChild(dot);
       els.local.currDots.push({ el: dot, ts: now });
 
@@ -638,9 +648,13 @@
         },
       });
 
-      const water = h("div", `water-surface water-fill${isShaping ? " shaping" : ""}`, {
-        style: { height: "0%" },
-      });
+      const water = h(
+        "div",
+        `water-surface water-fill${isShaping ? " shaping" : ""}`,
+        {
+          style: { height: "0%" },
+        },
+      );
       bucket.appendChild(water);
 
       for (let i = 1; i <= 4; i++) {
@@ -721,8 +735,7 @@
       els.countLine.textContent = `${label}: ${level} / ${result.limit}`;
 
       if (isShaping && result.delay != null && result.delay > 0) {
-        els.statusLine.innerHTML =
-          `<span style="color:${C.violet}">\u29D7</span> Shaping \u2014 delay: ${result.delay.toFixed(1)}s`;
+        els.statusLine.innerHTML = `<span style="color:${C.violet}">\u29D7</span> Shaping \u2014 delay: ${result.delay.toFixed(1)}s`;
       }
     },
 
@@ -748,8 +761,7 @@
         if (els.local.level <= 0) {
           els.dripDot.style.opacity = "0";
           if (isShaping) {
-            els.statusLine.innerHTML =
-              `<span style="color:${C.violet}">\u29D7</span> Shaping \u2014 requests queued`;
+            els.statusLine.innerHTML = `<span style="color:${C.violet}">\u29D7</span> Shaping \u2014 requests queued`;
           }
         }
       }

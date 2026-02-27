@@ -1,7 +1,10 @@
 import express from "express";
+import session from "express-session";
+import { RedisStore } from "connect-redis";
 import { engine } from "express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
+import getClient from "./redis.js";
 import { router as rateLimitRouter } from "./components/rate-limiting/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,6 +33,22 @@ app.use((req, res, next) => {
     next();
   }
 });
+
+const redisClient = await getClient();
+
+app.use(
+  session({
+    store: new RedisStore({ client: redisClient, prefix: "sess:" }),
+    secret: process.env.SESSION_SECRET || "redis-ratelimit-demo-secret",
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      maxAge: 1000 * 60 * 30,
+      httpOnly: true,
+      sameSite: "lax",
+    },
+  }),
+);
 
 app.get("/", (_req, res) => {
   res.render("home");

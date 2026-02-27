@@ -1,28 +1,28 @@
 :root {
-  --redis-red: #FF4438;
-  --hyper-04: #FD736A;
-  --hyper-05: #FF4438;
-  --hyper-06: #EB352A;
-  --hyper-07: #E4291E;
-  --hyper-08: #D1281E;
-  --hyper-09: #8A221C;
-  --hyper-10: #351D22;
-  --midnight: #091A23;
+  --redis-red: #ff4438;
+  --hyper-04: #fd736a;
+  --hyper-05: #ff4438;
+  --hyper-06: #eb352a;
+  --hyper-07: #e4291e;
+  --hyper-08: #d1281e;
+  --hyper-09: #8a221c;
+  --hyper-10: #351d22;
+  --midnight: #091a23;
   --dusk: #163341;
-  --dusk-01: #F3F3F3;
-  --dusk-09: #0D212C;
-  --dusk-90: #2D4754;
-  --dusk-70: #5C707A;
-  --dusk-50: #8A99A0;
-  --dusk-30: #B9C2C6;
-  --dusk-10: #D9D9D9;
-  --volt: #DCFF1E;
+  --dusk-01: #f3f3f3;
+  --dusk-09: #0d212c;
+  --dusk-90: #2d4754;
+  --dusk-70: #5c707a;
+  --dusk-50: #8a99a0;
+  --dusk-30: #b9c2c6;
+  --dusk-10: #d9d9d9;
+  --volt: #dcff1e;
   --volt-dim: rgba(220, 255, 30, 0.25);
-  --sky-blue: #80DBFF;
-  --violet: #C795E3;
+  --sky-blue: #80dbff;
+  --violet: #c795e3;
   --violet-09: #592479;
-  --font-primary: 'Space Grotesk', sans-serif;
-  --font-mono: 'Space Mono', monospace;
+  --font-primary: "Space Grotesk", sans-serif;
+  --font-mono: "Space Mono", monospace;
   --max-container: 1390px;
 }
 
@@ -633,51 +633,108 @@ select.config-input option {
 /* ---- Animations ---- */
 
 @keyframes slot-pop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.25); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
-.slot-pop { animation: slot-pop 0.25s ease-out; }
+.slot-pop {
+  animation: slot-pop 0.25s ease-out;
+}
 
 @keyframes token-consume {
-  0% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(0) translateY(-20px); opacity: 0; }
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0) translateY(-20px);
+    opacity: 0;
+  }
 }
-.token-consume { animation: token-consume 0.3s ease-in forwards; }
+.token-consume {
+  animation: token-consume 0.3s ease-in forwards;
+}
 
 @keyframes token-appear {
-  0% { transform: scale(0); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
-.token-appear { animation: token-appear 0.3s ease-out forwards; }
+.token-appear {
+  animation: token-appear 0.3s ease-out forwards;
+}
 
 @keyframes drip-fall {
-  0% { transform: translateY(0); opacity: 0.8; }
-  100% { transform: translateY(24px); opacity: 0; }
+  0% {
+    transform: translateY(0);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(24px);
+    opacity: 0;
+  }
 }
-.drip { animation: drip-fall 1.2s ease-in infinite; }
+.drip {
+  animation: drip-fall 1.2s ease-in infinite;
+}
 
 @keyframes dot-appear {
-  0% { transform: translateY(-50%) scale(0); }
-  100% { transform: translateY(-50%) scale(1); }
+  0% {
+    transform: translateY(-50%) scale(0);
+  }
+  100% {
+    transform: translateY(-50%) scale(1);
+  }
 }
-.dot-appear { animation: dot-appear 0.25s ease-out forwards; }
+.dot-appear {
+  animation: dot-appear 0.25s ease-out forwards;
+}
 
 @keyframes flash-denied {
-  0%, 100% { box-shadow: none; }
-  50% { box-shadow: 0 0 16px rgba(255, 68, 56, 0.5); }
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 68, 56, 0.5);
+  }
 }
-.flash-denied { animation: flash-denied 0.4s ease-out; }
+.flash-denied {
+  animation: flash-denied 0.4s ease-out;
+}
 
 .water-surface {
-  background: linear-gradient(to bottom, rgba(128, 219, 255, 0.35), rgba(128, 219, 255, 0.12));
+  background: linear-gradient(
+    to bottom,
+    rgba(128, 219, 255, 0.35),
+    rgba(128, 219, 255, 0.12)
+  );
   transition: height 0.35s ease-out;
 }
 
 .water-surface.danger {
-  background: linear-gradient(to bottom, rgba(255, 68, 56, 0.35), rgba(255, 68, 56, 0.12));
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 68, 56, 0.35),
+    rgba(255, 68, 56, 0.12)
+  );
 }
 
 .water-surface.shaping {
-  background: linear-gradient(to bottom, rgba(199, 149, 227, 0.35), rgba(199, 149, 227, 0.12));
+  background: linear-gradient(
+    to bottom,
+    rgba(199, 149, 227, 0.35),
+    rgba(199, 149, 227, 0.12)
+  );
 }

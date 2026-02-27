@@ -42,10 +42,25 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     redisType: "STRING",
     commands: "INCR, EXPIRE, TTL",
     shortDesc: "Fixed time intervals",
-    infoUrl: "https://redis.io/tutorials/howtos/ratelimiting/#1-fixed-window-counter",
+    infoUrl:
+      "https://redis.io/tutorials/howtos/ratelimiting/#1-fixed-window-counter",
     configFields: [
-      { name: "maxRequests", label: "Max Requests", default: 10, min: 1, max: 50, step: 1 },
-      { name: "windowSeconds", label: "Window (seconds)", default: 10, min: 1, max: 60, step: 1 },
+      {
+        name: "maxRequests",
+        label: "Max Requests",
+        default: 10,
+        min: 1,
+        max: 50,
+        step: 1,
+      },
+      {
+        name: "windowSeconds",
+        label: "Window (seconds)",
+        default: 10,
+        min: 1,
+        max: 60,
+        step: 1,
+      },
     ],
   },
   "sliding-window-log": {
@@ -56,10 +71,25 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     redisType: "SORTED SET",
     commands: "ZADD, ZREMRANGEBYSCORE, ZCARD",
     shortDesc: "Exact timestamp tracking",
-    infoUrl: "https://redis.io/tutorials/howtos/ratelimiting/#2-sliding-window-log",
+    infoUrl:
+      "https://redis.io/tutorials/howtos/ratelimiting/#2-sliding-window-log",
     configFields: [
-      { name: "maxRequests", label: "Max Requests", default: 10, min: 1, max: 50, step: 1 },
-      { name: "windowSeconds", label: "Window (seconds)", default: 10, min: 1, max: 60, step: 1 },
+      {
+        name: "maxRequests",
+        label: "Max Requests",
+        default: 10,
+        min: 1,
+        max: 50,
+        step: 1,
+      },
+      {
+        name: "windowSeconds",
+        label: "Window (seconds)",
+        default: 10,
+        min: 1,
+        max: 60,
+        step: 1,
+      },
     ],
   },
   "sliding-window-counter": {
@@ -70,10 +100,25 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     redisType: "STRING x2",
     commands: "INCR, EXPIRE, GET",
     shortDesc: "Weighted window blending",
-    infoUrl: "https://redis.io/tutorials/howtos/ratelimiting/#3-sliding-window-counter",
+    infoUrl:
+      "https://redis.io/tutorials/howtos/ratelimiting/#3-sliding-window-counter",
     configFields: [
-      { name: "maxRequests", label: "Max Requests", default: 10, min: 1, max: 50, step: 1 },
-      { name: "windowSeconds", label: "Window (seconds)", default: 10, min: 1, max: 60, step: 1 },
+      {
+        name: "maxRequests",
+        label: "Max Requests",
+        default: 10,
+        min: 1,
+        max: 50,
+        step: 1,
+      },
+      {
+        name: "windowSeconds",
+        label: "Window (seconds)",
+        default: 10,
+        min: 1,
+        max: 60,
+        step: 1,
+      },
     ],
   },
   "token-bucket": {
@@ -86,8 +131,22 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     shortDesc: "Steady refill, burst-friendly",
     infoUrl: "https://redis.io/tutorials/howtos/ratelimiting/#4-token-bucket",
     configFields: [
-      { name: "maxTokens", label: "Max Tokens", default: 10, min: 1, max: 50, step: 1 },
-      { name: "refillRate", label: "Refill Rate (tok/s)", default: 1, min: 0.1, max: 10, step: 0.1 },
+      {
+        name: "maxTokens",
+        label: "Max Tokens",
+        default: 10,
+        min: 1,
+        max: 50,
+        step: 1,
+      },
+      {
+        name: "refillRate",
+        label: "Refill Rate (tok/s)",
+        default: 1,
+        min: 0.1,
+        max: 10,
+        step: 0.1,
+      },
     ],
   },
   "leaky-bucket": {
@@ -109,8 +168,22 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
           { value: "shaping", label: "Shaping (queue)" },
         ],
       },
-      { name: "capacity", label: "Capacity", default: 10, min: 1, max: 50, step: 1 },
-      { name: "leakRate", label: "Leak Rate (req/s)", default: 1, min: 0.1, max: 10, step: 0.1 },
+      {
+        name: "capacity",
+        label: "Capacity",
+        default: 10,
+        min: 1,
+        max: 50,
+        step: 1,
+      },
+      {
+        name: "leakRate",
+        label: "Leak Rate (req/s)",
+        default: 1,
+        min: 0.1,
+        max: 10,
+        step: 0.1,
+      },
     ],
   },
 };
@@ -153,7 +226,11 @@ router.get("/:algorithm/view", (req: Request, res: Response) => {
   const meta = algorithmMeta[algorithm];
 
   if (!meta) {
-    res.status(404).send(`<p class="text-red-400 text-sm">Unknown algorithm: ${algorithm}</p>`);
+    res
+      .status(404)
+      .send(
+        `<p class="text-red-400 text-sm">Unknown algorithm: ${algorithm}</p>`,
+      );
     return;
   }
 
@@ -172,17 +249,23 @@ router.get("/:algorithm/view", (req: Request, res: Response) => {
     Object.fromEntries(meta.configFields.map((f) => [f.name, f.default])),
   );
 
-  res.render("algorithm-view", { layout: false, ...meta, configFields, configJson });
+  res.render("algorithm-view", {
+    layout: false,
+    ...meta,
+    configFields,
+    configJson,
+  });
 });
 
 /**
  * POST /api/rate-limit/reset
- * Delete all rate-limit keys
+ * Delete rate-limit keys for the current session
  */
-router.post("/reset", async (_req: Request, res: Response) => {
+router.post("/reset", async (req: Request, res: Response) => {
   try {
     const redis = await getClient();
-    const keys = await redis.keys(`${KEY_PREFIX}:*`);
+    const sessionId = req.session.id;
+    const keys = await redis.keys(`${KEY_PREFIX}:${sessionId}:*`);
 
     if (keys.length > 0) {
       await redis.del(keys);
@@ -209,7 +292,8 @@ router.post("/:algorithm", async (req: Request, res: Response) => {
   }
 
   try {
-    const key = `${KEY_PREFIX}:${algorithm}`;
+    const sessionId = req.session.id;
+    const key = `${KEY_PREFIX}:${sessionId}:${algorithm}`;
     const config = req.body?.config
       ? { ...algo.defaultConfig, ...req.body.config }
       : undefined;
@@ -235,7 +319,8 @@ router.post("/:algorithm/burst", async (req: Request, res: Response) => {
   }
 
   try {
-    const key = `${KEY_PREFIX}:${algorithm}`;
+    const sessionId = req.session.id;
+    const key = `${KEY_PREFIX}:${sessionId}:${algorithm}`;
     const config = req.body?.config
       ? { ...algo.defaultConfig, ...req.body.config }
       : undefined;

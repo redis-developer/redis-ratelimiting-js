@@ -21,7 +21,7 @@ export const DEFAULT_CONFIG: FixedWindowConfig = {
 /**
  * Fixed Window Counter rate limiter.
  *
- * Uses a single STRING key per window. 
+ * Uses a single STRING key per window.
  * INCR atomically bumps the counter, and EXPIRE ensures
  * cleanup.
  *

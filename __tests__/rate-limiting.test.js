@@ -168,9 +168,7 @@ describe("Rate Limiting", () => {
 
   describe("Unknown algorithm", () => {
     test("returns 400 for unknown algorithm", async () => {
-      await request(app)
-        .post("/api/rate-limit/unknown-algo")
-        .expect(400);
+      await request(app).post("/api/rate-limit/unknown-algo").expect(400);
     });
   });
 });
