@@ -2,7 +2,7 @@ This is a [Redis](https://redis.io/) rate limiting demo for JS and [Node](https:
 
 - [Redis Cloud](https://redis.io/try-free/)
 - [Express](https://expressjs.com/)
-- [Handlebars](https://handlebarsjs.com/) + [Tailwind CSS](https://tailwindcss.com/) + [HTMX](https://htmx.org/)
+- [Handlebars](https://handlebarsjs.com/) + [HTMX](https://htmx.org/)
 
 ## Rate Limiting Algorithms
 

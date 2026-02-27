@@ -46,6 +46,15 @@
     return C.red;
   }
 
+  function flashVizPanel() {
+    const vizBox = document.querySelector("#algorithm-detail .viz-panel");
+    if (vizBox) {
+      vizBox.classList.remove("flash-denied");
+      void vizBox.offsetWidth;
+      vizBox.classList.add("flash-denied");
+    }
+  }
+
   // ---- Renderers ----
 
   const renderers = {};
@@ -56,19 +65,17 @@
       const max = config.maxRequests || 10;
       const winSec = config.windowSeconds || 10;
 
-      const statusLine = h("div", "text-center mb-5 font-mono text-sm", {
+      const statusLine = h("div", "viz-status", {
         style: { color: C.textSecondary },
         text: `Window: ${winSec.toFixed(1)}s remaining`,
       });
       container.appendChild(statusLine);
 
-      const grid = h("div", "flex justify-center items-end gap-1 flex-wrap", {
-        style: { minHeight: "80px", marginBottom: "24px" },
-      });
+      const grid = h("div", "slot-grid");
       const slots = [];
       const slotW = Math.max(16, Math.min(32, Math.floor(380 / max) - 4));
       for (let i = 0; i < max; i++) {
-        const s = h("div", "rounded transition-all duration-200", {
+        const s = h("div", "slot", {
           style: {
             width: slotW + "px",
             height: "56px",
@@ -81,10 +88,10 @@
       }
       container.appendChild(grid);
 
-      const barBg = h("div", "w-full rounded-full", {
+      const barBg = h("div", "progress-bar", {
         style: { height: "6px", background: C.surface, marginBottom: "12px" },
       });
-      const barFill = h("div", "rounded-full", {
+      const barFill = h("div", "progress-fill", {
         style: {
           height: "6px",
           width: "100%",
@@ -95,7 +102,7 @@
       barBg.appendChild(barFill);
       container.appendChild(barBg);
 
-      const countLine = h("div", "text-center font-mono text-xs", {
+      const countLine = h("div", "viz-count", {
         style: { color: C.textDim },
         text: `0 / ${max} requests used`,
       });
@@ -140,14 +147,7 @@
       }
 
       if (!result.allowed) {
-        const vizBox = document.querySelector(
-          "#algorithm-detail .lg\\:col-span-2",
-        );
-        if (vizBox) {
-          vizBox.classList.remove("flash-denied");
-          void vizBox.offsetWidth;
-          vizBox.classList.add("flash-denied");
-        }
+        flashVizPanel();
       }
 
       els.countLine.textContent = `${used} / ${result.limit} requests used`;
@@ -181,15 +181,14 @@
       const max = config.maxRequests || 10;
       const winSec = config.windowSeconds || 10;
 
-      const statusLine = h("div", "text-center mb-5 font-mono text-sm", {
+      const statusLine = h("div", "viz-status", {
         style: { color: C.textSecondary },
         text: `0 / ${max} requests in window`,
       });
       container.appendChild(statusLine);
 
-      const timeline = h("div", "relative mx-auto", {
+      const timeline = h("div", "timeline", {
         style: {
-          width: "92%",
           height: "90px",
           border: `1px solid ${C.skyBlue}50`,
           borderRadius: "8px",
@@ -198,7 +197,7 @@
         },
       });
 
-      const midline = h("div", "absolute left-4 right-4", {
+      const midline = h("div", "timeline-line", {
         style: {
           top: "50%",
           height: "2px",
@@ -208,24 +207,18 @@
       });
       timeline.appendChild(midline);
 
-      const dotsWrap = h("div", "absolute inset-0", {
-        style: { pointerEvents: "none" },
-      });
+      const dotsWrap = h("div", "dots-layer");
       timeline.appendChild(dotsWrap);
 
       container.appendChild(timeline);
 
-      const windowLabel = h(
-        "div",
-        "text-center font-mono text-xs mt-2 mb-1",
-        {
-          style: { color: C.textDim },
-          text: `\u2190 ${winSec}s window \u2192`,
-        },
-      );
+      const windowLabel = h("div", "viz-label", {
+        style: { color: C.textDim },
+        text: `\u2190 ${winSec}s window \u2192`,
+      });
       container.appendChild(windowLabel);
 
-      const countLine = h("div", "text-center font-mono text-xs", {
+      const countLine = h("div", "viz-count", {
         style: { color: C.textDim },
         text: `0 / ${max} requests in window`,
       });
@@ -243,12 +236,11 @@
     update(els, result) {
       const now = Date.now();
 
-      // Count dots that arrived at roughly the same instant (burst detection)
       const nearbyCount = els.local.dots.filter(
         (d) => Math.abs(now - d.ts) < 10,
       ).length;
 
-      const dot = h("div", `absolute rounded-full dot-appear${result.allowed ? " allowed" : ""}`, {
+      const dot = h("div", `dot dot-appear${result.allowed ? " allowed" : ""}`, {
         style: {
           width: `${10 + nearbyCount * 2}px`,
           height: `${10 + nearbyCount * 2}px`,
@@ -263,14 +255,7 @@
       els.local.dots.push({ ts: now, el: dot });
 
       if (!result.allowed) {
-        const vizBox = document.querySelector(
-          "#algorithm-detail .lg\\:col-span-2",
-        );
-        if (vizBox) {
-          vizBox.classList.remove("flash-denied");
-          void vizBox.offsetWidth;
-          vizBox.classList.add("flash-denied");
-        }
+        flashVizPanel();
       }
 
       const count = result.limit - result.remaining;
@@ -308,27 +293,19 @@
   };
 
   // ========== Sliding Window Counter ==========
-  //
-  // Visualisation: a fixed "sliding window" outline stays in place.
-  // Behind it, two fixed-width windows (previous + current) scroll
-  // right-to-left.  Each window shows request dots on a centre line,
-  // just like the sliding-window-log renderer.
-  //
   renderers["sliding-window-counter"] = {
     create(container, config) {
       const max = config.maxRequests || 10;
       const winSec = config.windowSeconds || 10;
 
-      const statusLine = h("div", "text-center mb-4 font-mono text-sm", {
+      const statusLine = h("div", "viz-status", {
         style: { color: C.textSecondary },
         text: `Weight: 1.00 \u2014 Effective: 0 / ${max}`,
       });
       container.appendChild(statusLine);
 
-      // ---- Fixed frame (the "sliding window" outline) ----
-      const frame = h("div", "relative mx-auto", {
+      const frame = h("div", "timeline", {
         style: {
-          width: "92%",
           height: "90px",
           border: `1px solid ${C.skyBlue}50`,
           borderRadius: "8px",
@@ -337,8 +314,7 @@
         },
       });
 
-      // ---- Scrolling track (holds prev + curr, 200 % of frame) ----
-      const track = h("div", "absolute top-0 bottom-0", {
+      const track = h("div", "track", {
         style: {
           width: "200%",
           left: "0",
@@ -347,18 +323,16 @@
         },
       });
 
-      // Helper: build one fixed-window region (50 % of track = 100 % of frame)
       function makeWindow(label, bg, labelColor) {
-        const win = h("div", "absolute top-0 bottom-0", {
+        const win = h("div", "window-half", {
           style: { width: "50%", background: bg },
         });
-        const lbl = h(
-          "div",
-          "absolute top-2 left-0 right-0 text-center font-mono",
-          { style: { fontSize: "10px", color: labelColor }, text: label },
-        );
+        const lbl = h("div", "window-label", {
+          style: { color: labelColor },
+          text: label,
+        });
         win.appendChild(lbl);
-        const line = h("div", "absolute left-3 right-3", {
+        const line = h("div", "window-line", {
           style: {
             top: "50%",
             height: "2px",
@@ -367,9 +341,7 @@
           },
         });
         win.appendChild(line);
-        const dots = h("div", "absolute inset-0", {
-          style: { pointerEvents: "none" },
-        });
+        const dots = h("div", "dots-layer");
         win.appendChild(dots);
         return { win, lbl, dots };
       }
@@ -390,8 +362,7 @@
       curr.win.style.left = "50%";
       track.appendChild(curr.win);
 
-      // Dashed boundary between the two windows
-      const boundary = h("div", "absolute top-0 bottom-0", {
+      const boundary = h("div", "track-boundary", {
         style: {
           left: "50%",
           width: "0px",
@@ -403,19 +374,13 @@
       frame.appendChild(track);
       container.appendChild(frame);
 
-      // Label under the frame
-      const windowLabel = h(
-        "div",
-        "text-center font-mono text-xs mt-2 mb-1",
-        {
-          style: { color: C.skyBlue },
-          text: `\u2190 ${winSec}s sliding window \u2192`,
-        },
-      );
+      const windowLabel = h("div", "viz-label", {
+        style: { color: C.skyBlue },
+        text: `\u2190 ${winSec}s sliding window \u2192`,
+      });
       container.appendChild(windowLabel);
 
-      // Formula
-      const formula = h("div", "text-center font-mono text-xs mt-2 mb-2", {
+      const formula = h("div", "viz-formula", {
         style: { color: C.textDim },
         text: "0 \u00d7 1.00 + 0 = 0 effective",
       });
@@ -445,13 +410,11 @@
       const now = Date.now();
       els.local.currCount++;
 
-      // Position dot at the current progress within the window
       const winSec = els.local.windowSeconds;
       const rawElapsed = (now - els.local.windowStart) / 1000;
       const nearbyCount = els.local.currDots.filter(
         (d) => Math.abs(now - d.ts) < 50,
       ).length;
-      // Tiny spread so burst dots don't perfectly overlap
       const adjusted = rawElapsed + nearbyCount * 0.018;
       const progress = (adjusted % winSec) / winSec;
       const xPct = 4 + progress * 92;
@@ -459,7 +422,7 @@
       const lanes = [-28, -14, 0, 14, 28];
       const yOffset = lanes[nearbyCount % lanes.length];
 
-      const dot = h("div", `absolute rounded-full dot-appear${result.allowed ? " allowed" : ""}`, {
+      const dot = h("div", `dot dot-appear${result.allowed ? " allowed" : ""}`, {
         style: {
           width: `${10 + nearbyCount * 2}px`,
           height: `${10 + nearbyCount * 2}px`,
@@ -473,7 +436,6 @@
       els.curr.dots.appendChild(dot);
       els.local.currDots.push({ el: dot, ts: now });
 
-      // Update numbers
       const max = result.limit;
       const effective = max - result.remaining;
       els.curr.lbl.textContent = `Current Window (${els.local.currCount})`;
@@ -484,14 +446,7 @@
       els.statusLine.textContent = `Weight: ${els.local.weight.toFixed(2)} \u2014 Effective: ${effective} / ${max}`;
 
       if (!result.allowed) {
-        const vizBox = document.querySelector(
-          "#algorithm-detail .lg\\:col-span-2",
-        );
-        if (vizBox) {
-          vizBox.classList.remove("flash-denied");
-          void vizBox.offsetWidth;
-          vizBox.classList.add("flash-denied");
-        }
+        flashVizPanel();
       }
     },
 
@@ -501,13 +456,11 @@
       const currentWindowNum = Math.floor(elapsed / winSec);
       const windowProgress = (elapsed % winSec) / winSec;
 
-      // ---- Detect fixed-window boundary crossing ----
       if (currentWindowNum > els.local.lastWindowNum) {
         els.local.lastWindowNum = currentWindowNum;
         els.local.prevCount = els.local.currCount;
         els.local.currCount = 0;
 
-        // Move current dots into the previous window container
         els.prev.dots.innerHTML = "";
         els.local.prevDots.forEach((d) => d.el.remove());
         els.local.prevDots = els.local.currDots;
@@ -518,7 +471,6 @@
         els.prev.lbl.textContent = `Previous Window (${els.local.prevCount})`;
         els.curr.lbl.textContent = "Current Window (0)";
 
-        // Snap track back so the (new) prev window is behind the frame
         els.track.style.transition = "none";
         els.track.style.transform = "translateX(0%)";
         requestAnimationFrame(() => {
@@ -526,16 +478,11 @@
         });
       }
 
-      // ---- Scroll track: prev+curr slide left behind the fixed frame ----
-      // progress 0 → frame shows prev entirely
-      // progress 1 → frame shows curr entirely
       els.track.style.transform = `translateX(${-windowProgress * 50}%)`;
 
-      // ---- Fade previous window dots by weight ----
       els.local.weight = +(1 - windowProgress).toFixed(3);
       els.prev.dots.style.opacity = String(0.3 + els.local.weight * 0.7);
 
-      // ---- Keep formula / status in sync during idle ticks ----
       const weighted = els.local.prevCount * els.local.weight;
       const effective = weighted + els.local.currCount;
       const max = config.maxRequests || 10;
@@ -550,14 +497,14 @@
       const max = config.maxTokens || 10;
       const rate = config.refillRate || 1;
 
-      const statusLine = h("div", "text-center mb-4 font-mono text-sm", {
+      const statusLine = h("div", "viz-status", {
         style: { color: C.textSecondary },
         html: `<span style="color:${C.volt}">\u25bc</span> Refilling at ${rate} token${rate !== 1 ? "s" : ""}/s`,
       });
       container.appendChild(statusLine);
 
-      const bucketWrap = h("div", "flex justify-center mb-4");
-      const bucket = h("div", "relative overflow-hidden", {
+      const bucketWrap = h("div", "bucket-wrap");
+      const bucket = h("div", "bucket", {
         style: {
           width: "260px",
           height: "160px",
@@ -568,13 +515,10 @@
         },
       });
 
-      const tokenGrid = h(
-        "div",
-        "absolute bottom-0 left-0 right-0 flex flex-wrap-reverse justify-center gap-2 p-3",
-      );
+      const tokenGrid = h("div", "token-grid");
       const tokens = [];
       for (let i = 0; i < max; i++) {
-        const t = h("div", "rounded-full", {
+        const t = h("div", "token", {
           style: {
             width: "22px",
             height: "22px",
@@ -590,7 +534,7 @@
       bucketWrap.appendChild(bucket);
       container.appendChild(bucketWrap);
 
-      const countLine = h("div", "text-center font-mono text-xs", {
+      const countLine = h("div", "viz-count", {
         style: { color: C.textDim },
         text: `${max} / ${max} tokens`,
       });
@@ -630,14 +574,7 @@
       });
 
       if (!result.allowed) {
-        const vizBox = document.querySelector(
-          "#algorithm-detail .lg\\:col-span-2",
-        );
-        if (vizBox) {
-          vizBox.classList.remove("flash-denied");
-          void vizBox.offsetWidth;
-          vizBox.classList.add("flash-denied");
-        }
+        flashVizPanel();
       }
 
       els.countLine.textContent = `${result.remaining} / ${result.limit} tokens`;
@@ -679,14 +616,14 @@
       const cap = config.capacity || 10;
       const rate = config.leakRate || 1;
 
-      const statusLine = h("div", "text-center mb-4 font-mono text-sm", {
+      const statusLine = h("div", "viz-status", {
         style: { color: C.textSecondary },
         html: `<span style="color:${C.skyBlue}">\u25bc</span> Incoming requests`,
       });
       container.appendChild(statusLine);
 
-      const bucketWrap = h("div", "flex justify-center mb-1");
-      const bucket = h("div", "relative overflow-hidden", {
+      const bucketWrap = h("div", "bucket-wrap-sm");
+      const bucket = h("div", "bucket", {
         style: {
           width: "260px",
           height: "150px",
@@ -697,13 +634,13 @@
         },
       });
 
-      const water = h("div", "absolute bottom-0 left-0 right-0 water-surface", {
+      const water = h("div", "water-surface water-fill", {
         style: { height: "0%" },
       });
       bucket.appendChild(water);
 
       for (let i = 1; i <= 4; i++) {
-        const marker = h("div", "absolute left-2 right-2", {
+        const marker = h("div", "bucket-marker", {
           style: {
             bottom: `${(i / 5) * 100}%`,
             height: "1px",
@@ -716,10 +653,8 @@
       bucketWrap.appendChild(bucket);
       container.appendChild(bucketWrap);
 
-      const dripRow = h("div", "flex justify-center mb-3", {
-        style: { height: "28px", position: "relative" },
-      });
-      const dripDot = h("div", "drip rounded-full mx-auto", {
+      const dripRow = h("div", "drip-row");
+      const dripDot = h("div", "drip drip-dot", {
         style: {
           width: "6px",
           height: "6px",
@@ -730,13 +665,13 @@
       dripRow.appendChild(dripDot);
       container.appendChild(dripRow);
 
-      const drainLabel = h("div", "text-center font-mono text-xs mb-2", {
+      const drainLabel = h("div", "viz-label-drain", {
         style: { color: C.textDim },
         text: `Draining at ${rate} req/s`,
       });
       container.appendChild(drainLabel);
 
-      const countLine = h("div", "text-center font-mono text-xs", {
+      const countLine = h("div", "viz-count", {
         style: { color: C.textDim },
         text: `Level: 0 / ${cap}`,
       });
@@ -769,14 +704,7 @@
       }
 
       if (!result.allowed) {
-        const vizBox = document.querySelector(
-          "#algorithm-detail .lg\\:col-span-2",
-        );
-        if (vizBox) {
-          vizBox.classList.remove("flash-denied");
-          void vizBox.offsetWidth;
-          vizBox.classList.add("flash-denied");
-        }
+        flashVizPanel();
       }
 
       els.countLine.textContent = `Level: ${level} / ${result.limit}`;
@@ -829,12 +757,10 @@
         ? `Allowed \u2014 ${r.remaining}/${r.limit} remaining`
         : `Denied \u2014 retry after ${r.retryAfter}s`;
 
-      const entry = h(
-        "div",
-        "flex items-center gap-2 py-1 border-b text-xs",
-        { style: { borderColor: C.border + "60" } },
-      );
-      entry.innerHTML = `<span style="color:${color}" class="font-bold font-mono">${icon}</span><span style="color:${C.textMuted}" class="font-mono">${text}</span>`;
+      const entry = h("div", "log-entry", {
+        style: { borderColor: C.border + "60" },
+      });
+      entry.innerHTML = `<span style="color:${color}" class="log-icon">${icon}</span><span style="color:${C.textMuted}" class="log-text">${text}</span>`;
       log.insertBefore(entry, log.firstChild);
     });
 
