@@ -3,7 +3,9 @@
   <div class="algo-header">
     <div class="algo-title-row">
       <h2>{{name}}</h2>
-      <a class="btn-secondary btn-more-info" href="{{infoUrl}}" target="_blank">More info</a>
+      <a class="btn-info-icon" href="{{infoUrl}}" target="_blank" title="Compare algorithms">
+        {{> info-icon}}
+      </a>
     </div>
     <p>{{description}}</p>
     <div class="algo-badges">

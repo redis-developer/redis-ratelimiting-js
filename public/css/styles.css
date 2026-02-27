@@ -58,11 +58,39 @@ body {
   text-align: center;
 }
 
+.header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+}
+
 .header h1 {
   font-size: 1.875rem;
   font-weight: 700;
   color: white;
   margin: 0 0 0.25rem;
+}
+
+.btn-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--dusk-50);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+
+.btn-info-icon:hover {
+  color: var(--sky-blue);
+  border-color: var(--sky-blue);
+  background: rgba(128, 219, 255, 0.1);
 }
 
 .header p {
@@ -154,7 +182,7 @@ body {
 .algo-title-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.1rem;
 }
 
 .algo-header h2 {
@@ -162,11 +190,6 @@ body {
   font-weight: 700;
   color: white;
   margin: 0;
-}
-
-a.btn-more-info {
-  flex: 0 0 content;
-  text-decoration: none;
 }
 
 .algo-header > p {
