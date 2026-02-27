@@ -93,7 +93,7 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     name: "Leaky Bucket",
     slug: "leaky-bucket",
     description:
-      "Requests fill a bucket that leaks at a constant rate. Smooths traffic to a steady output. Uses a HASH + Lua script.",
+      "Requests fill a bucket that leaks at a constant rate. Drops requests when the bucket is full (policing method). Uses a HASH + Lua script.",
     redisType: "HASH + Lua",
     commands: "EVAL, HSET, HGETALL",
     shortDesc: "Constant drain rate",
