@@ -1,0 +1,63 @@
+name: Deploy to PS Portal
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to PS Portal
+    if: github.ref == 'refs/heads/main'
+    environment: ps-portal
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create an incremental release
+        id: tag
+        uses: zendesk/action-create-release@v3
+        with:
+          auto_increment_type: minor
+          tag_schema: semantic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set TAG
+        id: format_tag
+        run: |
+          echo "tag=$(echo ${{ steps.tag.outputs.current_tag }} | cut -dv -f2)" >> $GITHUB_OUTPUT
+
+      - name: Encode token
+        id: encode
+        env:
+          SOURCE_REPO_READ_TOKEN: ${{ secrets.SOURCE_REPO_READ_TOKEN }}
+
+        run: |
+          ENCODED_TOKEN=$(echo -n "${SOURCE_REPO_READ_TOKEN}" | base64 | tr -d '\n')
+          echo "encoded_token=${ENCODED_TOKEN}" >> $GITHUB_OUTPUT
+
+      - name: Trigger infra repo build
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PS_IMAGE_BUILDER_TOKEN }}
+          repository: Redis-ProfessionalService/ps-portal-image-builder
+          event-type: build-image
+          client-payload: |-
+            {
+              "source_repo_url": "https://github.com/${{ github.repository }}",
+              "source_repo_ref": "${{ github.ref_name }}",
+              "image_name": "${{ github.repository }}",
+              "image_version": "${{ steps.format_tag.outputs.tag }}",
+              "source_dir": "",
+              "clone_token": "${{ steps.encode.outputs.encoded_token }}"
+            }
+
+      - name: Build triggered
+        run: |
+          echo "✅ Build triggered on infra repo"
+          echo ""
+          echo "📦 Build Details:"
+          echo "  Source Repo: https://github.com/${{ github.repository }}"
+          echo "  Source Ref:  ${{ github.ref_name }}"
+          echo "  Image Version: ${{ steps.format_tag.outputs.tag }}"
+          echo ""
+          echo "🔗 Check build status at:"
+          echo "  https://github.com/Redis-ProfessionalService/ps-portal-image-builder/actions/"
