@@ -151,11 +151,22 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.algo-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .algo-header h2 {
   font-size: 1.5rem;
   font-weight: 700;
   color: white;
   margin: 0;
+}
+
+a.btn-more-info {
+  flex: 0 0 content;
+  text-decoration: none;
 }
 
 .algo-header > p {

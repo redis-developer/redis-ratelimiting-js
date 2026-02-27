@@ -28,6 +28,7 @@ interface AlgorithmMeta {
   redisType: string;
   commands: string;
   shortDesc: string;
+  infoUrl: string;
   configFields: ConfigField[];
 }
 
@@ -40,6 +41,7 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     redisType: "STRING",
     commands: "INCR, EXPIRE, TTL",
     shortDesc: "Fixed time intervals",
+    infoUrl: "https://redis.io/tutorials/howtos/ratelimiting/#1-fixed-window-counter",
     configFields: [
       { name: "maxRequests", label: "Max Requests", default: 10, min: 1, max: 50, step: 1 },
       { name: "windowSeconds", label: "Window (seconds)", default: 10, min: 1, max: 60, step: 1 },
@@ -53,6 +55,7 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     redisType: "SORTED SET",
     commands: "ZADD, ZREMRANGEBYSCORE, ZCARD",
     shortDesc: "Exact timestamp tracking",
+    infoUrl: "https://redis.io/tutorials/howtos/ratelimiting/#2-sliding-window-log",
     configFields: [
       { name: "maxRequests", label: "Max Requests", default: 10, min: 1, max: 50, step: 1 },
       { name: "windowSeconds", label: "Window (seconds)", default: 10, min: 1, max: 60, step: 1 },
@@ -66,6 +69,7 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     redisType: "STRING x2",
     commands: "INCR, EXPIRE, GET",
     shortDesc: "Weighted window blending",
+    infoUrl: "https://redis.io/tutorials/howtos/ratelimiting/#3-sliding-window-counter",
     configFields: [
       { name: "maxRequests", label: "Max Requests", default: 10, min: 1, max: 50, step: 1 },
       { name: "windowSeconds", label: "Window (seconds)", default: 10, min: 1, max: 60, step: 1 },
@@ -79,6 +83,7 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     redisType: "HASH + Lua",
     commands: "EVAL, HSET, HGETALL",
     shortDesc: "Steady refill, burst-friendly",
+    infoUrl: "https://redis.io/tutorials/howtos/ratelimiting/#4-token-bucket",
     configFields: [
       { name: "maxTokens", label: "Max Tokens", default: 10, min: 1, max: 50, step: 1 },
       { name: "refillRate", label: "Refill Rate (tok/s)", default: 1, min: 0.1, max: 10, step: 0.1 },
@@ -92,6 +97,7 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     redisType: "HASH + Lua",
     commands: "EVAL, HSET, HGETALL",
     shortDesc: "Constant drain rate",
+    infoUrl: "https://redis.io/tutorials/howtos/ratelimiting/#5-leaky-bucket",
     configFields: [
       { name: "capacity", label: "Capacity", default: 10, min: 1, max: 50, step: 1 },
       { name: "leakRate", label: "Leak Rate (req/s)", default: 1, min: 0.1, max: 10, step: 0.1 },
