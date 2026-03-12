@@ -39,8 +39,8 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     slug: "fixed-window",
     description:
       "Counts requests in fixed time windows using INCR + EXPIRE. Simple but susceptible to boundary bursts.",
-    redisType: "STRING",
-    commands: "INCR, EXPIRE, TTL",
+    redisType: "STRING + Lua",
+    commands: "EVAL, INCR, EXPIRE, PTTL",
     shortDesc: "Fixed time intervals",
     infoUrl:
       "https://redis.io/tutorials/howtos/ratelimiting/#1-fixed-window-counter",
@@ -68,8 +68,8 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     slug: "sliding-window-log",
     description:
       "Logs each request timestamp in a ZSET. Precise sliding window, but stores every request.",
-    redisType: "SORTED SET",
-    commands: "ZADD, ZREMRANGEBYSCORE, ZCARD",
+    redisType: "SORTED SET + Lua",
+    commands: "EVAL, ZADD, ZREMRANGEBYSCORE, ZCARD, ZRANGE, EXPIRE",
     shortDesc: "Exact timestamp tracking",
     infoUrl:
       "https://redis.io/tutorials/howtos/ratelimiting/#2-sliding-window-log",
@@ -97,8 +97,8 @@ const algorithmMeta: Record<string, AlgorithmMeta> = {
     slug: "sliding-window-counter",
     description:
       "Weighted average of current and previous window counts. Smooths the fixed-window boundary problem with minimal memory.",
-    redisType: "STRING x2",
-    commands: "INCR, EXPIRE, GET",
+    redisType: "STRING x2 + Lua",
+    commands: "EVAL, GET, INCR, EXPIRE",
     shortDesc: "Weighted window blending",
     infoUrl:
       "https://redis.io/tutorials/howtos/ratelimiting/#3-sliding-window-counter",
@@ -266,9 +266,13 @@ router.post("/reset", async (req: Request, res: Response) => {
     const redis = await getClient();
     const sessionId = req.session.id;
     const keys = await redis.keys(`${KEY_PREFIX}:${sessionId}:*`);
+    const hashTaggedKeys = await redis.keys(
+      `{${KEY_PREFIX}:${sessionId}:*`,
+    );
+    const allKeys = [...keys, ...hashTaggedKeys];
 
-    if (keys.length > 0) {
-      await redis.del(keys);
+    if (allKeys.length > 0) {
+      await redis.del(allKeys);
     }
 
     res.json({ ok: true });

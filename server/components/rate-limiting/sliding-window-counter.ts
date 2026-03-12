@@ -16,11 +16,45 @@ export const DEFAULT_CONFIG: SlidingWindowCounterConfig = {
  *
  * Keeps two fixed-window counters (current and previous) and
  * computes a weighted count based on how far into the current
- * window we are. This smooths the boundary spike of plain
- * fixed windows while using very little memory (two keys).
+ * window we are. A Lua script atomically reads both counters,
+ * evaluates the weighted estimate, and conditionally increments
+ * — preventing concurrent requests from slipping past the limit.
  *
- * Redis commands: INCR, EXPIRE, GET, TTL
+ * Keys use hash tags (`{base}:window`) so both counters map to
+ * the same slot in Redis Cluster.
+ *
+ * Redis commands: EVAL (Lua), GET, INCR, EXPIRE
  */
+
+const LUA_SCRIPT = `
+local current_key = KEYS[1]
+local previous_key = KEYS[2]
+local max_requests = tonumber(ARGV[1])
+local window_seconds = tonumber(ARGV[2])
+local elapsed = tonumber(ARGV[3])
+
+local prev_count = tonumber(redis.call('GET', previous_key) or '0') or 0
+local current_count = tonumber(redis.call('GET', current_key) or '0') or 0
+
+local weighted_prev = prev_count * (1 - elapsed)
+local estimated = weighted_prev + current_count
+
+if estimated >= max_requests then
+  return { 0, 0, math.floor(current_count) }
+end
+
+local new_count = redis.call('INCR', current_key)
+
+if new_count == 1 then
+  redis.call('EXPIRE', current_key, window_seconds * 2)
+end
+
+local new_estimate = weighted_prev + new_count
+local remaining = math.max(0, math.floor(max_requests - new_estimate))
+
+return { 1, remaining, new_count }
+`;
+
 export async function attempt(
   key: string,
   config: SlidingWindowCounterConfig = DEFAULT_CONFIG,
@@ -32,46 +66,33 @@ export async function attempt(
   const currentWindow = Math.floor(now / windowSeconds);
   const previousWindow = currentWindow - 1;
 
-  const currentKey = `${key}:${currentWindow}`;
-  const previousKey = `${key}:${previousWindow}`;
+  // Hash tags ensure both keys map to the same cluster slot
+  const currentKey = `{${key}}:${currentWindow}`;
+  const previousKey = `{${key}}:${previousWindow}`;
 
-  // How far through the current window (0..1)
   const elapsed = (now % windowSeconds) / windowSeconds;
 
-  // Get previous window count
-  const prevCount = parseInt((await redis.get(previousKey)) ?? "0", 10);
+  const result = (await redis.eval(LUA_SCRIPT, {
+    keys: [currentKey, previousKey],
+    arguments: [
+      maxRequests.toString(),
+      windowSeconds.toString(),
+      elapsed.toString(),
+    ],
+  })) as number[];
 
-  // Weight by how much of the previous window still overlaps
-  const weightedPrev = prevCount * (1 - elapsed);
+  const allowed = result[0] === 1;
+  const remaining = result[1];
 
-  // Get current window count before incrementing
-  const currentCount = parseInt((await redis.get(currentKey)) ?? "0", 10);
-
-  const estimatedCount = weightedPrev + currentCount;
-
-  if (estimatedCount >= maxRequests) {
-    const retryAfter = Math.ceil(windowSeconds * (1 - elapsed));
-    return {
-      allowed: false,
-      remaining: 0,
-      limit: maxRequests,
-      retryAfter: Math.max(1, retryAfter),
-    };
+  let retryAfter: number | null = null;
+  if (!allowed) {
+    retryAfter = Math.max(1, Math.ceil(windowSeconds * (1 - elapsed)));
   }
-
-  // Allowed — increment current window
-  const newCount = await redis.incr(currentKey);
-  if (newCount === 1) {
-    await redis.expire(currentKey, windowSeconds * 2);
-  }
-
-  const newEstimate = weightedPrev + newCount;
-  const remaining = Math.max(0, Math.floor(maxRequests - newEstimate));
 
   return {
-    allowed: true,
+    allowed,
     remaining,
     limit: maxRequests,
-    retryAfter: null,
+    retryAfter,
   };
 }

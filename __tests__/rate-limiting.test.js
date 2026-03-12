@@ -8,8 +8,10 @@ const KEY_PREFIX = "ratelimit";
 async function cleanup() {
   const redis = await getClient();
   const keys = await redis.keys(`${KEY_PREFIX}:*`);
-  if (keys.length > 0) {
-    await redis.del(keys);
+  const hashTaggedKeys = await redis.keys(`{${KEY_PREFIX}:*`);
+  const allKeys = [...keys, ...hashTaggedKeys];
+  if (allKeys.length > 0) {
+    await redis.del(allKeys);
   }
 }
 
@@ -19,150 +21,178 @@ describe("Rate Limiting", () => {
   });
 
   afterAll(async () => {
-    await cleanup();
+    // await cleanup();
   });
 
   describe("Fixed Window", () => {
     test("allows requests under the limit", async () => {
-      const res = await request(app)
+      const agent = request.agent(app);
+      const { body } = await agent
         .post("/api/rate-limit/fixed-window")
         .expect(200);
 
-      expect(res.text).toContain("Allowed");
-      expect(res.text).toContain("9 / 10 remaining");
+      expect(body.allowed).toBeTrue();
+      expect(body.remaining).toBe(9);
+      expect(body.limit).toBe(10);
     });
 
     test("denies requests over the limit", async () => {
-      // Send 10 requests to fill the window
+      const agent = request.agent(app);
+
       for (let i = 0; i < 10; i++) {
-        await request(app).post("/api/rate-limit/fixed-window");
+        await agent.post("/api/rate-limit/fixed-window");
       }
 
-      const res = await request(app)
+      const { body } = await agent
         .post("/api/rate-limit/fixed-window")
         .expect(200);
 
-      expect(res.text).toContain("Denied");
-      expect(res.text).toContain("0 / 10 remaining");
+      expect(body.allowed).toBeFalse();
+      expect(body.remaining).toBe(0);
+      expect(body.limit).toBe(10);
     });
 
     test("burst sends 10 requests and shows results", async () => {
-      const res = await request(app)
+      const agent = request.agent(app);
+      const { body } = await agent
         .post("/api/rate-limit/fixed-window/burst")
         .expect(200);
 
-      expect(res.text).toContain("Allowed");
-      expect(res.text).toContain("0 / 10 remaining");
+      for (let i = 0; i < 10; ++i) {
+        expect(body[i].allowed).toBeTrue();
+        expect(body[i].remaining).toBe(9 - i);
+        expect(body[i].limit).toBe(10);
+      }
     });
   });
 
   describe("Sliding Window Log", () => {
     test("allows requests under the limit", async () => {
-      const res = await request(app)
+      const agent = request.agent(app);
+      const { body } = await agent
         .post("/api/rate-limit/sliding-window-log")
         .expect(200);
 
-      expect(res.text).toContain("Allowed");
-      expect(res.text).toContain("9 / 10 remaining");
+      expect(body.allowed).toBeTrue();
+      expect(body.remaining).toBe(9);
+      expect(body.limit).toBe(10);
     });
 
     test("denies requests over the limit", async () => {
+      const agent = request.agent(app);
+
       for (let i = 0; i < 10; i++) {
-        await request(app).post("/api/rate-limit/sliding-window-log");
+        await agent.post("/api/rate-limit/sliding-window-log");
       }
 
-      const res = await request(app)
+      const { body } = await agent
         .post("/api/rate-limit/sliding-window-log")
         .expect(200);
 
-      expect(res.text).toContain("Denied");
-      expect(res.text).toContain("0 / 10 remaining");
+      expect(body.allowed).toBeFalse();
+      expect(body.remaining).toBe(0);
+      expect(body.limit).toBe(10);
     });
   });
 
   describe("Sliding Window Counter", () => {
     test("allows requests under the limit", async () => {
-      const res = await request(app)
+      const agent = request.agent(app);
+      const { body } = await agent
         .post("/api/rate-limit/sliding-window-counter")
         .expect(200);
 
-      expect(res.text).toContain("Allowed");
+      expect(body.allowed).toBeTrue();
+      expect(body.limit).toBe(10);
     });
 
     test("denies requests over the limit", async () => {
+      const agent = request.agent(app);
+
       for (let i = 0; i < 10; i++) {
-        await request(app).post("/api/rate-limit/sliding-window-counter");
+        await agent.post("/api/rate-limit/sliding-window-counter");
       }
 
-      const res = await request(app)
+      const { body } = await agent
         .post("/api/rate-limit/sliding-window-counter")
         .expect(200);
 
-      expect(res.text).toContain("Denied");
+      expect(body.allowed).toBeFalse();
+      expect(body.limit).toBe(10);
     });
   });
 
   describe("Token Bucket", () => {
     test("allows requests when tokens are available", async () => {
-      const res = await request(app)
+      const agent = request.agent(app);
+      const { body } = await agent
         .post("/api/rate-limit/token-bucket")
         .expect(200);
 
-      expect(res.text).toContain("Allowed");
+      expect(body.allowed).toBeTrue();
+      expect(body.limit).toBe(10);
     });
 
     test("denies requests when bucket is empty", async () => {
+      const agent = request.agent(app);
+
       for (let i = 0; i < 10; i++) {
-        await request(app).post("/api/rate-limit/token-bucket");
+        await agent.post("/api/rate-limit/token-bucket");
       }
 
-      const res = await request(app)
+      const { body } = await agent
         .post("/api/rate-limit/token-bucket")
         .expect(200);
 
-      expect(res.text).toContain("Denied");
-      expect(res.text).toContain("0 / 10 remaining");
+      expect(body.allowed).toBeFalse();
+      expect(body.remaining).toBe(0);
+      expect(body.limit).toBe(10);
     });
   });
 
   describe("Leaky Bucket", () => {
     test("allows requests when bucket has capacity", async () => {
-      const res = await request(app)
+      const agent = request.agent(app);
+      const { body } = await agent
         .post("/api/rate-limit/leaky-bucket")
         .expect(200);
 
-      expect(res.text).toContain("Allowed");
+      expect(body.allowed).toBeTrue();
+      expect(body.limit).toBe(10);
     });
 
     test("denies requests when bucket is full", async () => {
+      const agent = request.agent(app);
+
       for (let i = 0; i < 10; i++) {
-        await request(app).post("/api/rate-limit/leaky-bucket");
+        await agent.post("/api/rate-limit/leaky-bucket");
       }
 
-      const res = await request(app)
+      const { body } = await agent
         .post("/api/rate-limit/leaky-bucket")
         .expect(200);
 
-      expect(res.text).toContain("Denied");
-      expect(res.text).toContain("0 / 10 remaining");
+      expect(body.allowed).toBeFalse();
+      expect(body.remaining).toBe(0);
+      expect(body.limit).toBe(10);
     });
   });
 
   describe("Reset", () => {
     test("clears all rate limit keys", async () => {
-      // Create some state
-      await request(app).post("/api/rate-limit/fixed-window");
-      await request(app).post("/api/rate-limit/token-bucket");
+      const agent = request.agent(app);
 
-      // Reset
-      await request(app).post("/api/rate-limit/reset").expect(200);
+      await agent.post("/api/rate-limit/fixed-window");
+      await agent.post("/api/rate-limit/token-bucket");
 
-      // Verify counters are reset by checking we get full remaining
-      const res = await request(app)
+      await agent.post("/api/rate-limit/reset").expect(200);
+
+      const { body } = await agent
         .post("/api/rate-limit/fixed-window")
         .expect(200);
 
-      expect(res.text).toContain("9 / 10 remaining");
+      expect(body.remaining).toBe(9);
+      expect(body.limit).toBe(10);
     });
   });
 

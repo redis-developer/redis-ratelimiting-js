@@ -15,11 +15,42 @@ export const DEFAULT_CONFIG: SlidingWindowLogConfig = {
  * Sliding Window Log rate limiter.
  *
  * Stores each request timestamp as a member in a SORTED SET.
- * On every attempt we remove entries older than the window,
- * then count the remaining entries.
+ * A Lua script atomically prunes expired entries, checks the
+ * count, and conditionally adds the new entry — preventing
+ * concurrent requests from both slipping past the limit.
  *
- * Redis commands: ZREMRANGEBYSCORE, ZADD, ZCARD, EXPIRE
+ * Redis commands: EVAL (Lua), ZREMRANGEBYSCORE, ZADD, ZCARD, ZRANGE, EXPIRE
  */
+
+const LUA_SCRIPT = `
+local key = KEYS[1]
+local max_requests = tonumber(ARGV[1])
+local window_seconds = tonumber(ARGV[2])
+local now = tonumber(ARGV[3])
+local member = ARGV[4]
+
+local window_start = now - window_seconds * 1000
+
+redis.call('ZREMRANGEBYSCORE', key, 0, window_start)
+
+local count = redis.call('ZCARD', key)
+
+if count < max_requests then
+  redis.call('ZADD', key, now, member)
+  redis.call('EXPIRE', key, window_seconds)
+  return { 1, max_requests - count - 1, 0 }
+end
+
+-- Denied: find oldest entry to compute retry-after (in ms)
+local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+local retry_after_ms = window_seconds * 1000
+if #oldest >= 2 then
+  retry_after_ms = oldest[2] + window_seconds * 1000 - now
+end
+
+return { 0, 0, retry_after_ms }
+`;
+
 export async function attempt(
   key: string,
   config: SlidingWindowLogConfig = DEFAULT_CONFIG,
@@ -28,38 +59,26 @@ export async function attempt(
   const { maxRequests, windowSeconds } = config;
 
   const now = Date.now();
-  const windowStart = now - windowSeconds * 1000;
+  const member = `${now}:${Math.random()}`;
 
-  // Remove entries outside the window
-  await redis.zRemRangeByScore(key, 0, windowStart);
+  const result = (await redis.eval(LUA_SCRIPT, {
+    keys: [key],
+    arguments: [
+      maxRequests.toString(),
+      windowSeconds.toString(),
+      now.toString(),
+      member,
+    ],
+  })) as number[];
 
-  // Count current entries
-  const count = await redis.zCard(key);
-
-  if (count < maxRequests) {
-    // Add this request with timestamp as score and a unique member
-    await redis.zAdd(key, { score: now, value: `${now}:${Math.random()}` });
-    await redis.expire(key, windowSeconds);
-
-    return {
-      allowed: true,
-      remaining: maxRequests - count - 1,
-      limit: maxRequests,
-      retryAfter: null,
-    };
-  }
-
-  // Denied — find the oldest entry to compute retry-after
-  const oldest = await redis.zRangeWithScores(key, 0, 0);
-  let retryAfter = windowSeconds;
-  if (oldest.length > 0) {
-    retryAfter = (oldest[0].score + windowSeconds * 1000 - now) / 1000;
-  }
+  const allowed = result[0] === 1;
+  const remaining = result[1];
+  const retryAfterMs = result[2];
 
   return {
-    allowed: false,
-    remaining: 0,
+    allowed,
+    remaining,
     limit: maxRequests,
-    retryAfter,
+    retryAfter: allowed ? null : Math.max(0, retryAfterMs / 1000),
   };
 }

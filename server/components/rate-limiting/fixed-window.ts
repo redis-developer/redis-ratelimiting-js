@@ -22,11 +22,29 @@ export const DEFAULT_CONFIG: FixedWindowConfig = {
  * Fixed Window Counter rate limiter.
  *
  * Uses a single STRING key per window.
- * INCR atomically bumps the counter, and EXPIRE ensures
- * cleanup.
+ * A Lua script atomically increments the counter and sets
+ * the expiry on the first request, preventing the key from
+ * persisting forever if the process crashes mid-operation.
  *
- * Redis commands: INCR, EXPIRE, TTL
+ * Redis commands: EVAL (Lua), INCR, EXPIRE, PTTL
  */
+
+const LUA_SCRIPT = `
+local key = KEYS[1]
+local max_requests = tonumber(ARGV[1])
+local window_seconds = tonumber(ARGV[2])
+
+local count = redis.call('INCR', key)
+
+if count == 1 then
+  redis.call('EXPIRE', key, window_seconds)
+end
+
+local pttl = redis.call('PTTL', key)
+
+return { count, pttl }
+`;
+
 export async function attempt(
   key: string,
   config: FixedWindowConfig = DEFAULT_CONFIG,
@@ -34,21 +52,20 @@ export async function attempt(
   const redis = await getClient();
   const { maxRequests, windowSeconds } = config;
 
-  const count = await redis.incr(key);
+  const result = (await redis.eval(LUA_SCRIPT, {
+    keys: [key],
+    arguments: [maxRequests.toString(), windowSeconds.toString()],
+  })) as number[];
 
-  // Set expiry on first request in this window
-  if (count === 1) {
-    await redis.expire(key, windowSeconds);
-  }
+  const count = result[0];
+  const pttl = result[1];
 
   const allowed = count <= maxRequests;
   const remaining = Math.max(0, maxRequests - count);
 
   let retryAfter: number | null = null;
   if (!allowed) {
-    // Use pTTL to get milliseconds
-    const ttl = (await redis.pTTL(key)) / 1000;
-    retryAfter = ttl > 0 ? ttl : windowSeconds;
+    retryAfter = pttl > 0 ? pttl / 1000 : windowSeconds;
   }
 
   return { allowed, remaining, limit: maxRequests, retryAfter };
