@@ -1,12 +1,12 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import request from "supertest";
 import app from "../server/app.js";
-import getClient from "../server/redis.js";
+import * as tokenBucket from "../server/components/rate-limiting/token-bucket.js";
+import { redis } from "../server/redis.js";
 
 const KEY_PREFIX = "ratelimit";
 
 async function cleanup() {
-  const redis = await getClient();
   const keys = await redis.keys(`${KEY_PREFIX}:*`);
   const hashTaggedKeys = await redis.keys(`{${KEY_PREFIX}:*`);
   const allKeys = [...keys, ...hashTaggedKeys];
@@ -147,6 +147,44 @@ describe("Rate Limiting", () => {
       expect(body.allowed).toBeFalse();
       expect(body.remaining).toBe(0);
       expect(body.limit).toBe(10);
+    });
+
+    test("preserves fractional refill progress across denied requests", async () => {
+      const key = `${KEY_PREFIX}:token-bucket:fractional-refill`;
+      const originalDateNow = Date.now;
+      const config = { maxTokens: 1, refillRate: 1 };
+
+      try {
+        Date.now = () => 0;
+        const initialResult = await tokenBucket.attempt(key, config);
+        expect(initialResult.allowed).toBeTrue();
+        expect(initialResult.remaining).toBe(0);
+
+        Date.now = () => 500;
+        const halfSecondResult = await tokenBucket.attempt(key, config);
+        expect(halfSecondResult.allowed).toBeFalse();
+        expect(halfSecondResult.remaining).toBe(0);
+
+        const halfSecondState = await redis.hGetAll(key);
+        expect(Number(halfSecondState.tokens)).toBeCloseTo(0.5, 5);
+        expect(Number(halfSecondState.last_refill)).toBeCloseTo(0.5, 5);
+
+        Date.now = () => 900;
+        const nearFullSecondResult = await tokenBucket.attempt(key, config);
+        expect(nearFullSecondResult.allowed).toBeFalse();
+        expect(nearFullSecondResult.remaining).toBe(0);
+
+        const nearFullSecondState = await redis.hGetAll(key);
+        expect(Number(nearFullSecondState.tokens)).toBeCloseTo(0.9, 5);
+        expect(Number(nearFullSecondState.last_refill)).toBeCloseTo(0.9, 5);
+
+        Date.now = () => 1000;
+        const fullSecondResult = await tokenBucket.attempt(key, config);
+        expect(fullSecondResult.allowed).toBeTrue();
+        expect(fullSecondResult.remaining).toBe(0);
+      } finally {
+        Date.now = originalDateNow;
+      }
     });
   });
 

@@ -1,4 +1,4 @@
-import getClient from "../../redis.js";
+import { redis } from "../../redis.js";
 import type { RateLimitResult } from "./fixed-window.js";
 
 export interface LeakyBucketConfig {
@@ -112,7 +112,6 @@ export async function attempt(
   key: string,
   config: LeakyBucketConfig = DEFAULT_CONFIG,
 ): Promise<RateLimitResult> {
-  const redis = await getClient();
   const { capacity, leakRate, mode } = config;
 
   const now = Date.now() / 1000;

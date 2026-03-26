@@ -1,4 +1,4 @@
-import getClient from "../../redis.js";
+import { redis } from "../../redis.js";
 import type { RateLimitResult } from "./fixed-window.js";
 
 export interface SlidingWindowLogConfig {
@@ -55,7 +55,6 @@ export async function attempt(
   key: string,
   config: SlidingWindowLogConfig = DEFAULT_CONFIG,
 ): Promise<RateLimitResult> {
-  const redis = await getClient();
   const { maxRequests, windowSeconds } = config;
 
   const now = Date.now();

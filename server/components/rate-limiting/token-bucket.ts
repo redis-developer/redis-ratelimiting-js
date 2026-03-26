@@ -1,4 +1,4 @@
-import getClient from "../../redis.js";
+import { redis } from "../../redis.js";
 import type { RateLimitResult } from "./fixed-window.js";
 
 export interface TokenBucketConfig {
@@ -64,7 +64,6 @@ export async function attempt(
   key: string,
   config: TokenBucketConfig = DEFAULT_CONFIG,
 ): Promise<RateLimitResult> {
-  const redis = await getClient();
   const { maxTokens, refillRate } = config;
 
   const now = Date.now() / 1000; // seconds with fractional precision

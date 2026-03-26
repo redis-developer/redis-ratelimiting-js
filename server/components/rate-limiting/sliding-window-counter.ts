@@ -1,4 +1,4 @@
-import getClient from "../../redis.js";
+import { redis } from "../../redis.js";
 import type { RateLimitResult } from "./fixed-window.js";
 
 export interface SlidingWindowCounterConfig {
@@ -59,7 +59,6 @@ export async function attempt(
   key: string,
   config: SlidingWindowCounterConfig = DEFAULT_CONFIG,
 ): Promise<RateLimitResult> {
-  const redis = await getClient();
   const { maxRequests, windowSeconds } = config;
 
   const now = Math.floor(Date.now() / 1000);

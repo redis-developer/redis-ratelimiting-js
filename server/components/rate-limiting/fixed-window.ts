@@ -1,4 +1,4 @@
-import getClient from "../../redis.js";
+import { redis } from "../../redis.js";
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -49,7 +49,6 @@ export async function attempt(
   key: string,
   config: FixedWindowConfig = DEFAULT_CONFIG,
 ): Promise<RateLimitResult> {
-  const redis = await getClient();
   const { maxRequests, windowSeconds } = config;
 
   const result = (await redis.eval(LUA_SCRIPT, {

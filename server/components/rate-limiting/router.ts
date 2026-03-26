@@ -1,6 +1,6 @@
 import express from "express";
 import type { Request, Response } from "express";
-import getClient from "../../redis.js";
+import { redis } from "../../redis.js";
 import * as fixedWindow from "./fixed-window.js";
 import * as slidingWindowLog from "./sliding-window-log.js";
 import * as slidingWindowCounter from "./sliding-window-counter.js";
@@ -263,7 +263,6 @@ router.get("/:algorithm/view", (req: Request, res: Response) => {
  */
 router.post("/reset", async (req: Request, res: Response) => {
   try {
-    const redis = await getClient();
     const sessionId = req.session.id;
     const keys = await redis.keys(`${KEY_PREFIX}:${sessionId}:*`);
     const hashTaggedKeys = await redis.keys(
